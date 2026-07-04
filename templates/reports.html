@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report - CoffeeGuard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #faf5f2; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        h1 { color: #5a1a1a; border-bottom: 2px solid #8b1a1a; padding-bottom: 16px; }
+        .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin: 24px 0; }
+        .stat { background: #faf5f2; padding: 16px; border-radius: 12px; text-align: center; }
+        .stat .number { font-size: 2rem; font-weight: 700; color: #8b1a1a; }
+        .stat .label { color: #7a5a4a; font-size: 0.9rem; }
+        .chart-container { height: 250px; margin: 24px 0; }
+        .btn { background: #8b1a1a; color: white; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #a82828; }
+        .btn-success { background: #2d7a4a; }
+        .btn-success:hover { background: #1a6b3a; }
+        .footer { margin-top: 30px; color: #8a7a6a; text-align: center; border-top: 1px solid #f0e0d8; padding-top: 20px; }
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+        @media print { .btn-group { display: none; } .container { box-shadow: none; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-file-alt" style="color:#8b1a1a;"></i> CoffeeGuard Report</h1>
+        <p style="color:#7a5a4a;">Generated: {{ report.generated }}</p>
+        <p style="color:#7a5a4a;">Report for: {{ fullname }}</p>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="number">{{ report.total_predictions }}</div>
+                <div class="label">Total Predictions</div>
+            </div>
+            <div class="stat">
+                <div class="number" style="color:#3e9e6d;">{{ report.ripe }}</div>
+                <div class="label">Ripe</div>
+            </div>
+            <div class="stat">
+                <div class="number" style="color:#e6b85e;">{{ report.ripening }}</div>
+                <div class="label">Ripening</div>
+            </div>
+            <div class="stat">
+                <div class="number" style="color:#c97a5a;">{{ report.unripe }}</div>
+                <div class="label">Unripe</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="reportChart"></canvas>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+            <button class="btn btn-success" onclick="window.location.href='/dashboard'"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+            <button class="btn" onclick="window.location.href='/export_data'"><i class="fas fa-file-export"></i> Export CSV</button>
+        </div>
+
+        <div class="footer">CoffeeGuard © 2026</div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('reportChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ report.trends.labels|tojson }},
+                datasets: [
+                    { label: 'Ripe', data: {{ report.trends.ripe_data|tojson }}, backgroundColor: '#3e9e6d', borderRadius: 6 },
+                    { label: 'Ripening', data: {{ report.trends.ripening_data|tojson }}, backgroundColor: '#e6b85e', borderRadius: 6 },
+                    { label: 'Unripe', data: {{ report.trends.unripe_data|tojson }}, backgroundColor: '#c97a5a', borderRadius: 6 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  coffee-guard-ai:
+    build: .
+    container_name: coffee_guard_ai
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./static/uploads:/app/static/uploads
+      - ./instance:/app/instance
+      - ./*.pth:/app/*.pth
+      - ./*.json:/app/*.json
+      - ./*.db:/app/*.db
+      - ./*.log:/app/*.log
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=app.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/model-info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

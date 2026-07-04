@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>History - CoffeeGuardAI</title>
+
+<style>
+
+body{
+    font-family:Segoe UI,sans-serif;
+    background:#eef5ec;
+    padding:30px;
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.08);
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:12px;
+    border-bottom:1px solid #ddd;
+    text-align:left;
+}
+
+th{
+    background:#2f7d4f;
+    color:white;
+}
+
+.btn{
+    display:inline-block;
+    margin-bottom:20px;
+    text-decoration:none;
+    background:#2f7d4f;
+    color:white;
+    padding:10px 15px;
+    border-radius:8px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<a href="/dashboard" class="btn">
+← Dashboard
+</a>
+
+<div class="card">
+
+<h2>Analysis History</h2>
+
+<table>
+
+<tr>
+<th>Date</th>
+<th>Result</th>
+<th>Confidence</th>
+</tr>
+
+{% for row in history %}
+
+<tr>
+<td>{{ row[5] }}</td>
+<td>{{ row[3] }}</td>
+<td>{{ (row[4] * 100)|round(2) }}%</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+</div>
+
+</body>
+</html>

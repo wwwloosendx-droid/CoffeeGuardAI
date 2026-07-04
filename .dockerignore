@@ -1,0 +1,15 @@
+.git
+.gitignore
+.dockerignore
+README.md
+*.log
+venv/
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
+*.db-journal
+static/uploads/*
+!static/uploads/.gitkeep
