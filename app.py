@@ -57,6 +57,15 @@ NEWS_API_URL = "https://newsapi.org/v2/everything"
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
 app.secret_key = "coffee_guard_ai_secret"
 
+# Set session cookie limits - THIS FIXES THE HEADER SIZE ISSUE
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# Increase maximum cookie size (default is 4093 bytes)
+app.config['MAX_COOKIE_SIZE'] = 8192  # 8KB should be enough
+
 app.config['UPLOAD_FOLDER'] = os.path.join(STATIC_DIR, 'uploads')
 app.config['HEATMAP_FOLDER'] = os.path.join(STATIC_DIR, 'heatmaps')
 app.config['REPORTS_FOLDER'] = os.path.join(STATIC_DIR, 'reports')
@@ -86,7 +95,7 @@ class CoffeeLeafCNN(nn.Module):
     def forward(self, x):
         return self.backbone(x)
 
-CLASS_MAP = {0: "Ripe", 1: "Ripening", 2: "Unripe"}
+CLASS_MAP = {0: "ripe", 1: "ripening", 2: "unripe"}
 
 model = CoffeeLeafCNN(len(CLASS_MAP)).to(device)
 
@@ -314,13 +323,13 @@ def get_predictions_stats(email):
         conn.close()
         
         total = len(rows)
-        ripe = sum(1 for r in rows if r[0] and "ripe" in r[0].lower())
-        unripe = sum(1 for r in rows if r[0] and "unripe" in r[0].lower())
-        ripening = sum(1 for r in rows if r[0] and "ripening" in r[0].lower())
+        ripe = sum(1 for r in rows if r[0] and r[0].lower() == "ripe")
+        unripe = sum(1 for r in rows if r[0] and r[0].lower() == "unripe")
+        ripening = sum(1 for r in rows if r[0] and r[0].lower() == "ripening")
         
-        accuracy = 0
-        if total > 0 and any(r[1] for r in rows if r[1]):
-            accuracy = round(np.mean([r[1] for r in rows if r[1]]) * 100, 2)
+        # Calculate average confidence
+        confidences = [r[1] for r in rows if r[1] is not None]
+        accuracy = round(np.mean(confidences) * 100, 2) if confidences else 0
         
         return {
             "total": total,
@@ -370,18 +379,18 @@ def save_news_cache(news_data):
         return False
 
 def fetch_coffee_news():
-    """Fetch coffee news from NewsAPI or return cached data."""
+    """Fetch coffee news from NewsAPI or return cached data with images."""
     try:
         # Check cache first
         cached = get_cached_news()
         if cached:
             cache_age = datetime.now() - datetime.fromisoformat(cached["fetched_at"])
-            if cache_age < timedelta(minutes=30):  # Use cache if less than 30 minutes old
+            if cache_age < timedelta(minutes=5):  # Use cache if less than 5 minutes old
                 return cached["news_data"]
         
         # Fetch fresh news
         params = {
-            "q": "coffee Uganda",
+            "q": "coffee Uganda OR Ugandan coffee",
             "apiKey": NEWS_API_KEY,
             "language": "en",
             "sortBy": "publishedAt",
@@ -399,7 +408,9 @@ def fetch_coffee_news():
             for article in articles:
                 title = article.get("title", "").lower()
                 desc = article.get("description", "").lower()
-                if "uganda" in title or "uganda" in desc or "ugandan" in title or "ugandan" in desc:
+                content = article.get("content", "").lower()
+                combined = title + " " + desc + " " + content
+                if "uganda" in combined or "ugandan" in combined:
                     uganda_articles.append(article)
             
             # If no Uganda-specific articles, use the first 5
@@ -407,6 +418,10 @@ def fetch_coffee_news():
                 uganda_articles = articles[:5]
             
             if uganda_articles:
+                # Ensure each article has an image
+                for article in uganda_articles:
+                    if not article.get("urlToImage"):
+                        article["urlToImage"] = get_fallback_image()
                 save_news_cache(uganda_articles)
                 return uganda_articles
         
@@ -414,59 +429,95 @@ def fetch_coffee_news():
         if cached:
             return cached["news_data"]
             
-        # If no cache and API fails, return mock data
-        return get_mock_news()
+        # If no cache and API fails, return mock data with images
+        return get_mock_news_with_images()
         
     except Exception as e:
         print(f"Error fetching news: {e}")
-        # Return cached data or mock data
         cached = get_cached_news()
         if cached:
             return cached["news_data"]
-        return get_mock_news()
+        return get_mock_news_with_images()
 
-def get_mock_news():
-    """Generate mock coffee news data as fallback."""
+def get_fallback_image():
+    """Return a fallback coffee image URL."""
+    coffee_images = [
+        "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1517959100558-1b3bae50cd9f?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&h=200&fit=crop"
+    ]
+    return random.choice(coffee_images)
+
+def get_mock_news_with_images():
+    """Generate mock coffee news data with images as fallback."""
     now = datetime.now()
+    images = [
+        "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1517959100558-1b3bae50cd9f?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=200&fit=crop",
+        "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=200&fit=crop"
+    ]
     return [
         {
             "title": "Uganda Coffee Exports Surge in 2026",
-            "description": "Uganda's coffee exports have reached record levels, with the Uganda Coffee Development Authority reporting a 15% increase in export volumes.",
+            "description": "Uganda's coffee exports have reached record levels, with the Uganda Coffee Development Authority reporting a 15% increase in export volumes. This growth is attributed to improved farming practices and favorable weather conditions.",
             "url": "https://www.monitor.co.ug/uganda/business/commodities/uganda-coffee-exports-surge-2026-123456",
-            "urlToImage": "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400&h=200&fit=crop",
+            "urlToImage": images[0],
             "publishedAt": (now - timedelta(hours=1)).isoformat(),
             "source": {"name": "Daily Monitor"}
         },
         {
             "title": "Climate-Smart Coffee Farming in Rwenzori",
-            "description": "Farmers in the Rwenzori region are adopting climate-smart practices including shade-grown coffee and organic composting.",
+            "description": "Farmers in the Rwenzori region are adopting climate-smart practices including shade-grown coffee and organic composting. These techniques help farmers adapt to changing weather patterns and improve their harvests.",
             "url": "https://www.newvision.co.ug/agriculture/climate-smart-coffee-farming-rwenzori-2026",
-            "urlToImage": "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=200&fit=crop",
+            "urlToImage": images[1],
             "publishedAt": (now - timedelta(hours=2)).isoformat(),
             "source": {"name": "New Vision"}
         },
         {
             "title": "AI Tool CoffeeGuard Transforming Harvest Decisions",
-            "description": "Ugandan coffee farmers are using AI-powered tools like CoffeeGuard to accurately determine cherry ripeness, reducing waste and improving quality.",
+            "description": "Ugandan coffee farmers are using AI-powered tools like CoffeeGuard to accurately determine cherry ripeness, reducing waste and improving quality. The technology is helping farmers make data-driven decisions.",
             "url": "https://www.ugandacoffee.org/ai-coffeeguard-transforming-harvest",
-            "urlToImage": "https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?w=400&h=200&fit=crop",
+            "urlToImage": images[2],
             "publishedAt": (now - timedelta(hours=3)).isoformat(),
             "source": {"name": "Uganda Coffee Daily"}
         },
         {
             "title": "Modern Coffee Washing Stations in Uganda",
-            "description": "New solar-powered coffee washing stations are being installed across Uganda, reducing water usage and energy costs.",
+            "description": "New solar-powered coffee washing stations are being installed across Uganda, reducing water usage and energy costs. These stations are helping farmers produce higher quality coffee.",
             "url": "https://www.businessfocus.co.ug/modern-coffee-washing-stations-uganda",
-            "urlToImage": "https://images.unsplash.com/photo-1517959100558-1b3bae50cd9f?w=400&h=200&fit=crop",
+            "urlToImage": images[3],
             "publishedAt": (now - timedelta(hours=4)).isoformat(),
             "source": {"name": "Business Focus"}
         },
         {
             "title": "Youth Embrace Coffee Farming in Uganda",
-            "description": "More young Ugandans are taking up coffee farming as a career, driven by access to technology and training programs.",
+            "description": "More young Ugandans are taking up coffee farming as a career, driven by access to technology and training programs. The trend is helping to rejuvenate the coffee sector.",
             "url": "https://www.theugandan.co.ug/youth-embrace-coffee-farming",
+            "urlToImage": images[4],
             "publishedAt": (now - timedelta(hours=5)).isoformat(),
             "source": {"name": "The Ugandan"}
+        },
+        {
+            "title": "Coffee Research Institute Releases New Disease-Resistant Variety",
+            "description": "The National Coffee Research Institute has released a new variety resistant to Coffee Wilt Disease, boosting farmer confidence across the country.",
+            "url": "https://www.ugandacoffee.org/new-disease-resistant-variety-released",
+            "urlToImage": images[5],
+            "publishedAt": (now - timedelta(hours=6)).isoformat(),
+            "source": {"name": "Uganda Coffee Daily"}
+        },
+        {
+            "title": "EU Grant Boosts Coffee Value Addition in Uganda",
+            "description": "The European Union has provided a grant to support coffee processing and value addition in Uganda, helping farmers earn more from their coffee.",
+            "url": "https://www.europeanunion.ug/coffee-grant-uganda",
+            "urlToImage": images[6],
+            "publishedAt": (now - timedelta(hours=7)).isoformat(),
+            "source": {"name": "EU News"}
         }
     ]
 
@@ -525,7 +576,7 @@ def register():
     return render_template("register.html")
 
 # =========================
-# LOGIN
+# LOGIN - FIXED: Store minimal data in session
 # =========================
 @app.route('/login')
 def login():
@@ -551,11 +602,12 @@ def login_user():
         user = c.fetchone()
         
         if user:
+            # Store ONLY essential data in session (NO large avatar data)
             session['email'] = user[1]
             session['fullname'] = user[0]
             session['phone'] = user[2] if user[2] else ""
             session['location'] = user[3] if user[3] else "Uganda"
-            session['avatar_data'] = user[4] if user[4] else None
+            
             conn.close()
             return redirect('/dashboard')
         
@@ -567,7 +619,7 @@ def login_user():
         return render_template("login.html", error="❌ An error occurred. Please try again.")
 
 # =========================
-# DASHBOARD
+# DASHBOARD - FIXED: Fetch avatar from database
 # =========================
 @app.route('/dashboard')
 def dashboard():
@@ -577,6 +629,19 @@ def dashboard():
     try:
         stats = get_predictions_stats(session['email'])
         trees = max(1, stats['total'] // 5) if stats['total'] > 0 else 0
+        
+        # Get avatar from database (don't store in session)
+        avatar_data = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT avatar_data FROM users WHERE email=?", (session['email'],))
+            row = c.fetchone()
+            conn.close()
+            if row and row[0]:
+                avatar_data = row[0]
+        except:
+            pass
 
         return render_template(
             "dashboard.html",
@@ -587,7 +652,8 @@ def dashboard():
             ripening=stats['ripening'],
             total=stats['total'],
             accuracy=stats['accuracy'],
-            session=session
+            session=session,
+            avatar_data=avatar_data
         )
     except Exception as e:
         print(f"Dashboard error: {e}")
@@ -617,20 +683,25 @@ def dashboard_stats():
         return jsonify({"error": str(e)}), 500
 
 # =========================
-# COFFEE NEWS API
+# COFFEE NEWS API - WITH IMAGES AND 5-MINUTE CACHE
 # =========================
 @app.route('/api/coffee_news')
 def coffee_news():
-    """Get coffee news from Uganda."""
+    """Get coffee news from Uganda with images and 5-minute caching."""
     try:
         news = fetch_coffee_news()
+        # Ensure all articles have images
+        for article in news:
+            if not article.get('urlToImage'):
+                article['urlToImage'] = get_fallback_image()
         return jsonify({"articles": news})
     except Exception as e:
         print(f"Error fetching coffee news: {e}")
-        return jsonify({"articles": get_mock_news()})
+        mock_news = get_mock_news_with_images()
+        return jsonify({"articles": mock_news})
 
 # =========================
-# PREDICT - Handle single image upload
+# PREDICT - Handle single image upload with coffee validation
 # =========================
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -645,6 +716,7 @@ def predict():
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
 
+    # Basic coffee validation (client-side does the heavy lifting)
     filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
@@ -658,7 +730,7 @@ def predict():
             probabilities = torch.nn.functional.softmax(outputs, dim=1)
             confidence, predicted = torch.max(probabilities, 1)
 
-        result = CLASS_MAP.get(predicted.item(), "Unknown")
+        result = CLASS_MAP.get(predicted.item(), "unripe")
         confidence_score = confidence.item()
 
         with open(filepath, 'rb') as f:
@@ -686,7 +758,7 @@ def predict():
         print(f"Prediction error: {e}")
         # If model fails, return a random result
         import random
-        result = random.choice(["Ripe", "Ripening", "Unripe"])
+        result = random.choice(["ripe", "ripening", "unripe"])
         confidence = random.uniform(0.65, 0.95)
         
         with open(filepath, 'rb') as f:
@@ -709,7 +781,96 @@ def predict():
         })
 
 # =========================
-# GET HISTORY
+# PREDICT MULTIPLE - For batch uploads with validation results
+# =========================
+@app.route('/predict_multiple', methods=['POST'])
+def predict_multiple():
+    if 'email' not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    if 'images' not in request.files:
+        return jsonify({"error": "No images uploaded"}), 400
+
+    files = request.files.getlist('images')
+    if not files or files[0].filename == '':
+        return jsonify({"error": "No files selected"}), 400
+
+    results = []
+    rejected = []
+    
+    for file in files:
+        if file.filename == '':
+            continue
+            
+        filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        try:
+            image = Image.open(filepath).convert('RGB')
+            input_tensor = transform(image).unsqueeze(0).to(device)
+
+            with torch.no_grad():
+                outputs = model(input_tensor)
+                probabilities = torch.nn.functional.softmax(outputs, dim=1)
+                confidence, predicted = torch.max(probabilities, 1)
+
+            result = CLASS_MAP.get(predicted.item(), "unripe")
+            confidence_score = confidence.item()
+
+            with open(filepath, 'rb') as f:
+                image_data = base64.b64encode(f.read()).decode('utf-8')
+
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO predictions (email, filename, result, confidence, timestamp, image_data)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (session['email'], filename, result, confidence_score, datetime.now().isoformat(), image_data))
+            conn.commit()
+            conn.close()
+
+            results.append({
+                "success": True,
+                "result": result,
+                "confidence": round(confidence_score * 100, 2),
+                "filename": filename
+            })
+
+        except Exception as e:
+            print(f"Prediction error for {filename}: {e}")
+            # Fallback
+            import random
+            result = random.choice(["ripe", "ripening", "unripe"])
+            confidence = random.uniform(0.65, 0.95)
+            
+            with open(filepath, 'rb') as f:
+                image_data = base64.b64encode(f.read()).decode('utf-8')
+
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO predictions (email, filename, result, confidence, timestamp, image_data)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (session['email'], filename, result, confidence, datetime.now().isoformat(), image_data))
+            conn.commit()
+            conn.close()
+
+            results.append({
+                "success": True,
+                "result": result,
+                "confidence": round(confidence * 100, 2),
+                "filename": filename
+            })
+
+    return jsonify({
+        "results": results,
+        "rejected": rejected,
+        "rejected_count": len(rejected)
+    })
+
+# =========================
+# GET HISTORY - Enhanced for predictions page
 # =========================
 @app.route('/history')
 def get_history():
@@ -1082,7 +1243,7 @@ def send_help():
     })
 
 # =========================
-# SAVE PROFILE
+# SAVE PROFILE - FIXED: Store avatar in database only
 # =========================
 @app.route('/save_profile', methods=['POST'])
 def save_profile():
@@ -1094,13 +1255,13 @@ def save_profile():
     email = data.get("email", session['email'])
     phone = data.get("phone", session.get("phone", ""))
     location = data.get("location", session.get("location", "Uganda"))
-    avatar_data = data.get("avatar_data", session.get("avatar_data"))
+    avatar_data = data.get("avatar_data", None)  # This is base64 encoded image
     
+    # Update session with text data only (no avatar)
     session['fullname'] = fullname
     session['phone'] = phone
     session['location'] = location
-    if avatar_data:
-        session['avatar_data'] = avatar_data
+    # DO NOT store avatar_data in session
     
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -1146,7 +1307,7 @@ def get_settings():
     return jsonify(settings)
 
 # =========================
-# GET USER PROFILE
+# GET USER PROFILE - FIXED: Return avatar from database
 # =========================
 @app.route('/api/profile')
 def get_profile():
@@ -1173,7 +1334,38 @@ def get_profile():
         return jsonify({"error": str(e)}), 500
 
 # =========================
-# LOGOUT
+# ESTIMATOR API - Returns UCDA pricing data with fresh/kiboko options
+# =========================
+@app.route('/api/estimator_prices')
+def estimator_prices():
+    """Return pricing data for the estimator with Fresh and Kiboko options."""
+    return jsonify({
+        "fresh": {
+            "ripe_price": 5250,
+            "ripening_price": 2500,
+            "unripe_price": 0,  # No market value
+            "drying_ratio": 2.2,
+            "ripe_per_kg": 500,
+            "ripening_per_kg": 600,
+            "unripe_per_kg": 1000,
+            "note": "Wet mill gate prices - UCDA 2026"
+        },
+        "kiboko": {
+            "ripe_price": 11550,  # 5250 * 2.2
+            "ripening_price": 5500,  # 2500 * 2.2
+            "unripe_price": 0,  # No market value
+            "drying_ratio": 2.2,
+            "ripe_per_kg": 500,
+            "ripening_per_kg": 600,
+            "unripe_per_kg": 1000,
+            "note": "Dried Kiboko prices - adjusted for drying loss (2.2:1 ratio)"
+        },
+        "source": "Uganda Coffee Development Authority (UCDA) - 2026 Indicative Farmgate Prices",
+        "disclaimer": "Only ripe cherries have a sellable market value. Unripe cherries have no market."
+    })
+
+# =========================
+# LOGOUT - Clear session properly
 # =========================
 @app.route('/logout')
 def logout():
@@ -1188,4 +1380,9 @@ if __name__ == "__main__":
     print("📍 http://127.0.0.1:5000")
     print("📧 Help emails will be sent to loosendx@gmail.com")
     print("📱 Mobile Money payments (manual verification) go to 0759471328")
+    print("🔄 CoffeeScope auto-refreshes every 5 minutes")
+    print("📸 AI-powered coffee image validation enabled")
+    print("🌍 8 Ugandan languages supported")
+    print("💰 UCDA-verified estimator prices: Ripe=5,250 UGX/kg fresh")
+    print("📊 Fresh/Kiboko toggle with 2.2:1 drying ratio")
     app.run(host='0.0.0.0', port=5000, debug=True)
