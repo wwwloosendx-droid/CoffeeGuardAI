@@ -153,6 +153,7 @@
             flex-shrink: 0;
             cursor: pointer;
             transition: 0.3s;
+            position: relative;
         }
         .topbar-avatar:hover { transform: scale(1.05); border-color: #8b1a1a; }
         .topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -205,6 +206,25 @@
             box-shadow: 0 8px 25px rgba(139, 26, 26, 0.2);
         }
 
+        .btn-danger {
+            background: #cc5555;
+            color: white;
+            padding: 6px 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.25s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-danger:hover {
+            background: #aa3333;
+            transform: scale(1.05);
+        }
+
         .btn-profile {
             background: #8b1a1a;
             color: white;
@@ -246,27 +266,6 @@
             box-shadow: 0 8px 25px rgba(45, 122, 74, 0.3);
         }
 
-        .btn-danger {
-            background: #cc5555;
-            color: white;
-            padding: 10px 22px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: 0.25s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-        }
-        .btn-danger:hover {
-            background: #aa3333;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(204, 85, 85, 0.3);
-        }
-
         .btn-print {
             background: #2a5c7a;
             color: white;
@@ -290,7 +289,7 @@
 
         .cards {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 20px;
             margin-bottom: 32px;
         }
@@ -332,6 +331,24 @@
             margin-bottom: 32px;
         }
 
+        /* SMALLER PIE CHART CONTAINER */
+        .grid-2 .section:last-child .chart-container {
+            height: 160px !important;
+            max-height: 160px;
+        }
+
+        .grid-2 .section:last-child {
+            padding: 16px 18px 18px;
+        }
+
+        .grid-2 .section:last-child .section-header {
+            margin-bottom: 8px;
+        }
+
+        .grid-2 .section:last-child .section-header h3 {
+            font-size: 0.9rem;
+        }
+
         .section {
             background: white;
             border-radius: 16px;
@@ -369,7 +386,15 @@
             cursor: pointer;
         }
 
-        .chart-container { position: relative; height: 210px; }
+        .chart-container { 
+            position: relative; 
+            height: 210px; 
+        }
+
+        /* Bar chart remains normal height */
+        .grid-2 .section:first-child .chart-container {
+            height: 210px;
+        }
 
         table {
             width: 100%;
@@ -399,6 +424,7 @@
         .badge-ripe { background: #d4f0e0; color: #1a6b3a; }
         .badge-ripening { background: #f5edd0; color: #8a6d2a; }
         .badge-unripe { background: #f0dcd4; color: #8a4a3a; }
+        .badge-spoilt { background: #e8d8d8; color: #6a3a3a; }
 
         .action-group {
             display: flex;
@@ -478,6 +504,10 @@
             .leaf-left-2, .leaf-right-2 { display: none; }
             .leaf-left-1, .leaf-right-1 { width: 90px; }
             .grid-2 { grid-template-columns: 1fr; }
+            .grid-2 .section:last-child .chart-container {
+                height: 200px !important;
+                max-height: 200px;
+            }
         }
         @media (max-width: 650px) {
             .sidebar { width: 200px; padding: 16px; }
@@ -963,7 +993,7 @@
 
         .prediction-stats {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 16px;
             margin-bottom: 24px;
         }
@@ -991,6 +1021,7 @@
         .stat-ripe .stat-value { color: #3e9e6d; }
         .stat-ripening .stat-value { color: #e6b85e; }
         .stat-unripe .stat-value { color: #c97a5a; }
+        .stat-spoilt .stat-value { color: #7a4a4a; }
         .stat-confidence .stat-value { color: #8b1a1a; }
 
         .image-grid {
@@ -1079,7 +1110,6 @@
         .coffee-confidence .medium { color: #e6b85e; }
         .coffee-confidence .low { color: #c97a5a; }
 
-        /* ===== CORRECTED ESTIMATOR STYLES ===== */
         .estimator-item.border-ripe { border-left: 3px solid #3e9e6d; }
         .estimator-item.border-ripening { border-left: 3px solid #e6b85e; }
         .estimator-item.border-unripe { border-left: 3px solid #c97a5a; }
@@ -1180,6 +1210,27 @@
             font-weight: 700;
             color: #8b1a1a;
         }
+
+        /* Profile avatar delete button */
+        .avatar-delete-btn {
+            background: #cc5555;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 4px 14px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: block;
+            margin: 4px auto 12px;
+            transition: 0.2s;
+        }
+        .avatar-delete-btn:hover {
+            background: #aa3333;
+            transform: scale(1.05);
+        }
+        .avatar-delete-btn.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -1243,12 +1294,11 @@
             <div class="card"><div class="card-icon"><i class="fas fa-check-circle"></i></div><h3 data-i18n="ripe_label">Ripe</h3><div class="metric" id="ripeCount">0</div><span class="trend neutral"><i class="fas fa-minus"></i> 0%</span></div>
             <div class="card"><div class="card-icon"><i class="fas fa-clock"></i></div><h3 data-i18n="ripening_label">Ripening</h3><div class="metric" id="ripeningCount">0</div><span class="trend neutral"><i class="fas fa-minus"></i> 0%</span></div>
             <div class="card"><div class="card-icon"><i class="fas fa-leaf"></i></div><h3 data-i18n="unripe_label">Unripe</h3><div class="metric" id="unripeCount">0</div><span class="trend neutral"><i class="fas fa-minus"></i> 0%</span></div>
+            <div class="card"><div class="card-icon"><i class="fas fa-triangle-exclamation"></i></div><h3 data-i18n="spoilt_label">Spoilt</h3><div class="metric" id="spoiltCount">0</div><span class="trend neutral"><i class="fas fa-minus"></i> 0%</span></div>
             <div class="card"><div class="card-icon"><i class="fas fa-tree"></i></div><h3 data-i18n="total_cherries">Total Coffee Cherries</h3><div class="metric" id="totalCount">0</div><span class="trend neutral"><i class="fas fa-minus"></i> 0%</span></div>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- CORRECTED COFFEE CHERRY ESTIMATOR                             -->
-        <!-- ============================================================ -->
+        <!-- ESTIMATOR SECTION -->
         <div class="section" style="margin-bottom:32px;">
             <h3>
                 <i class="fas fa-calculator"></i> 
@@ -1258,7 +1308,6 @@
                 </span>
             </h3>
             
-            <!-- Mode Toggle: Fresh vs Kiboko -->
             <div class="mode-toggle">
                 <span class="mode-toggle-label"><i class="fas fa-scale-balanced"></i> Sell as:</span>
                 <div class="mode-toggle-group">
@@ -1310,25 +1359,21 @@
                     <span id="estUnripeKg">0 kg</span>
                 </div>
                 
-                <!-- RIPE VALUE (ONLY SELLABLE) -->
                 <div class="row total-row">
                     <span>💰 <strong>Ripe Cherry Value</strong> (sellable today)</span>
                     <span id="estRipeValue">0 UGX</span>
                 </div>
                 
-                <!-- RIPENING: Potential Future Value -->
                 <div class="row info-row" id="ripeningFutureRow">
                     <span><i class="fas fa-chart-line" style="color:#e6b85e;"></i> If left to ripen: <span id="ripeningFutureValue">~0 UGX</span></span>
                     <span style="font-size:0.7rem; color:#8a6d2a;">in 3-5 days</span>
                 </div>
                 
-                <!-- UNRIPE: Opportunity Cost Warning -->
                 <div class="row warning-row" id="unripeWarningRow">
                     <span><i class="fas fa-triangle-exclamation"></i> ⚠️ Picking unripe loses: <span id="unripeOpportunityCost">0 UGX</span></span>
                     <span style="font-size:0.7rem; color:#cc5555;">future income</span>
                 </div>
                 
-                <!-- TOTAL ESTIMATED EARNINGS -->
                 <div class="row total-row" style="border-top: 3px solid #8b1a1a; margin-top:8px; padding-top:10px; font-size:1.1rem;">
                     <span>🏦 <strong>Total Estimated Earnings</strong></span>
                     <span id="estTotalValue" style="color:#8b1a1a; font-size:1.3rem;">0 UGX</span>
@@ -1336,13 +1381,10 @@
                 
                 <div class="price-note">
                     📊 <strong>Source:</strong> <span class="source">Uganda Coffee Development Authority (UCDA)</span> — Indicative farmgate prices, 2026. 
-                    Drying ratio: ~2.2 kg fresh cherry = 1 kg Kiboko.
+                    Drying ratio: ~2.2 kg fresh cherry = 1 kg Kiboko. Spoilt cherries detected by the model carry no market value and are excluded from this estimator.
                 </div>
             </div>
         </div>
-        <!-- ============================================================ -->
-        <!-- END CORRECTED ESTIMATOR                                       -->
-        <!-- ============================================================ -->
 
         <div class="grid-2">
             <div class="section">
@@ -1352,6 +1394,7 @@
                         <i class="fas fa-circle" style="color:#3e9e6d;"></i> <span data-i18n="ripe_label">Ripe</span>
                         <i class="fas fa-circle" style="color:#e6b85e; margin-left:8px;"></i> <span data-i18n="ripening_label">Ripening</span>
                         <i class="fas fa-circle" style="color:#c97a5a; margin-left:8px;"></i> <span data-i18n="unripe_label">Unripe</span>
+                        <i class="fas fa-circle" style="color:#7a4a4a; margin-left:8px;"></i> <span data-i18n="spoilt_label">Spoilt</span>
                     </span>
                 </div>
                 <div class="chart-container"><canvas id="advancedBarChart"></canvas></div>
@@ -1435,6 +1478,7 @@
             <div class="prediction-stat-card stat-ripe"><div class="stat-value" id="statRipe">0</div><div class="stat-label" data-i18n="total_ripe">Total Ripe</div></div>
             <div class="prediction-stat-card stat-ripening"><div class="stat-value" id="statRipening">0</div><div class="stat-label" data-i18n="total_ripening">Total Ripening</div></div>
             <div class="prediction-stat-card stat-unripe"><div class="stat-value" id="statUnripe">0</div><div class="stat-label" data-i18n="total_unripe">Total Unripe</div></div>
+            <div class="prediction-stat-card stat-spoilt"><div class="stat-value" id="statSpoilt">0</div><div class="stat-label" data-i18n="total_spoilt">Total Spoilt</div></div>
             <div class="prediction-stat-card stat-confidence"><div class="stat-value" id="statAvgConf">0%</div><div class="stat-label" data-i18n="avg_confidence">Avg. Confidence</div></div>
         </div>
 
@@ -1540,6 +1584,7 @@
         </div>
         <input type="file" id="avatarInput" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)" />
         <button class="avatar-upload-btn" onclick="document.getElementById('avatarInput').click()"><i class="fas fa-camera"></i> Upload Photo</button>
+        <button class="avatar-delete-btn hidden" id="avatarDeleteBtn" onclick="deleteAvatar()"><i class="fas fa-trash-can"></i> Delete Photo</button>
         <label data-i18n="full_name">Full Name</label><input type="text" id="profileName" value="Coffee Farmer" placeholder="Your full name">
         <label data-i18n="email">Email Address</label><input type="email" id="profileEmail" value="" placeholder="Your email">
         <label data-i18n="phone">Phone Number</label><input type="text" id="profilePhone" value="" placeholder="Your phone number">
@@ -1689,20 +1734,34 @@
 <div id="supportModal" class="modal">
     <div class="modal-box">
         <h2><i class="fas fa-hand-holding-heart"></i> <span data-i18n="support_title">Support CoffeeGuard</span></h2>
-        <label data-i18n="your_name">Your Name</label><input id="supportName" placeholder="Your Name" value="">
-        <label data-i18n="mobile_money">Mobile Money Number</label><input id="supportPhone" placeholder="e.g. 2567xxxxxxx" value="">
-        <label data-i18n="amount_ugx">Amount (UGX)</label><input id="supportAmount" placeholder="Amount" type="number" min="100">
-        <div class="btn-group">
-            <button onclick="sendSupport()"><i class="fas fa-mobile-screen-button"></i> <span data-i18n="pay_momo">Pay with Mobile Money</span></button>
-            <button onclick="closeModal('supportModal')"><span data-i18n="close">Close</span></button>
+
+        <div id="paymentStep1">
+            <label data-i18n="your_name">Your Name</label><input id="supportName" placeholder="Your Name" value="">
+            <label data-i18n="mobile_money">Mobile Money Number</label><input id="supportPhone" placeholder="e.g. 0759471328" value="">
+            <label data-i18n="amount_ugx">Amount (UGX)</label><input id="supportAmount" placeholder="Amount" type="number" min="100">
+            <div class="btn-group">
+                <button onclick="requestPayment()"><i class="fas fa-mobile-screen-button"></i> <span data-i18n="pay_momo">Get Payment Instructions</span></button>
+                <button onclick="closeModal('supportModal')"><span data-i18n="close">Close</span></button>
+            </div>
         </div>
+
+        <div id="paymentStep2" style="display:none;">
+            <div id="paymentInstructions" style="background:#f5ede8; border-radius:12px; padding:14px 16px; margin-bottom:12px; font-size:0.9rem; color:#3a1a1a;"></div>
+            <label>MoMo / Airtel Transaction ID</label>
+            <input id="momoTransactionId" placeholder="e.g. MP240709.1234.A56789" value="">
+            <div class="btn-group">
+                <button onclick="submitPaymentConfirmation()"><i class="fas fa-circle-check"></i> Confirm Payment</button>
+                <button onclick="resetPaymentModal()">Back</button>
+            </div>
+        </div>
+
         <div id="paymentStatus" class="payment-status"></div>
     </div>
 </div>
 
 <script>
 // ============================================================
-// LANGUAGE SYSTEM - All Ugandan Languages (ACCURATE TRANSLATIONS)
+// LANGUAGE SYSTEM
 // ============================================================
 
 const EN = {
@@ -1714,7 +1773,7 @@ const EN = {
         tip_title: "Keep your trees healthy", tip_text: "Regular monitoring leads to better harvests.",
         welcome_back: "Welcome back", dashboard_sub: "Here's what's happening with your coffee plants today.",
         profile: "Profile", generate_report: "Generate Report", view_all: "View All",
-        ripe_label: "Ripe", ripening_label: "Ripening", unripe_label: "Unripe",
+        ripe_label: "Ripe", ripening_label: "Ripening", unripe_label: "Unripe", spoilt_label: "Spoilt",
         total_cherries: "Total Coffee Cherries", ripeness_trend: "Ripeness Trend",
         distribution: "Distribution", this_month: "This Month",
         prediction_studio: "Prediction Studio", prediction_sub: "Upload coffee cherry images to analyze ripeness.",
@@ -1723,7 +1782,7 @@ const EN = {
         supported_formats: "Supported: JPG, PNG, WEBP (Max 10MB each) - AI verifies coffee content",
         analyze_all: "Analyze All Images", remove_all: "Remove All",
         analysis_complete: "Analysis Complete", result: "Result", confidence: "Confidence",
-        total_ripe: "Total Ripe", total_ripening: "Total Ripening", total_unripe: "Total Unripe",
+        total_ripe: "Total Ripe", total_ripening: "Total Ripening", total_unripe: "Total Unripe", total_spoilt: "Total Spoilt",
         avg_confidence: "Avg. Confidence", recent_predictions: "Recent Predictions",
         image: "Image", date: "Date", predict: "Predict", new_images: "New Images",
         history: "History", export_data: "Export Data", footer_note: "Keep your coffee plants healthy! Regular monitoring leads to better harvests.",
@@ -1756,7 +1815,7 @@ const LG = {
         tip_title: "Kuuma emiti gy'emwanyi egirungi", tip_text: "Okwekenneenya buli kiseera kireeta ebibala ebirungi.",
         welcome_back: "Tukwaniriza", dashboard_sub: "Bino byawe ku bimera by'emwanyi leero.",
         profile: "Endabika yange", generate_report: "Kola Lipoota", view_all: "Laba Zonna",
-        ripe_label: "Ezengedde", ripening_label: "Ezikyengera", unripe_label: "Ezitannaengera",
+        ripe_label: "Ezengedde", ripening_label: "Ezikyengera", unripe_label: "Ezitannaengera", spoilt_label: "Ezivundu",
         total_cherries: "Emwanyi Zonna", ripeness_trend: "Enkyukakyuka mu Kwengera",
         distribution: "Okugabana", this_month: "Omwezi Guno",
         prediction_studio: "Ekifo ky'Okuteesa", prediction_sub: "Sindika ebifaananyi by'emwanyi okuzikebera.",
@@ -1765,7 +1824,7 @@ const LG = {
         supported_formats: "Ebikkirizibwa: JPG, PNG, WEBP (Buli emu 10MB) - AI ezikebera emwanyi",
         analyze_all: "Kebera Zonna", remove_all: "Ggyawo Zonna",
         analysis_complete: "Okukebera Kuwedde", result: "Ekivuddemu", confidence: "Obwesigwa",
-        total_ripe: "Ezengedde Zonna", total_ripening: "Ezikyengera Zonna", total_unripe: "Ezitannaengera Zonna",
+        total_ripe: "Ezengedde Zonna", total_ripening: "Ezikyengera Zonna", total_unripe: "Ezitannaengera Zonna", total_spoilt: "Ezivundu Zonna",
         avg_confidence: "Obwesigwa mu Bukiikanya", recent_predictions: "Ebyateesebwa Edda",
         image: "Ekifaananyi", date: "Olunaku", predict: "Teesa", new_images: "Ebifaananyi Ebipya",
         history: "Ebyafaayo", export_data: "Fulumya Data", footer_note: "Kuuma emiti gy'emwanyi egirungi! Okwekenneenya buli kiseera kireeta ebibala ebirungi.",
@@ -1798,7 +1857,7 @@ const SW = {
         tip_title: "Weka miti yako ya kahawa ikiwa na afya", tip_text: "Ufuatiliaji wa mara kwa mara huleta mavuno bora.",
         welcome_back: "Karibu tena", dashboard_sub: "Hii ndiyo inayoendelea na mimea yako ya kahawa leo.",
         profile: "Wasifu", generate_report: "Tengeneza Ripoti", view_all: "Tazama Yote",
-        ripe_label: "Iliyoiva", ripening_label: "Inayoiva", unripe_label: "Isiyoiva",
+        ripe_label: "Iliyoiva", ripening_label: "Inayoiva", unripe_label: "Isiyoiva", spoilt_label: "Iliyooza",
         total_cherries: "Jumla ya Kahawa", ripeness_trend: "Mwenendo wa Ukomavu",
         distribution: "Usambazaji", this_month: "Mwezi Huu",
         prediction_studio: "Studio ya Utabiri", prediction_sub: "Pakia picha za kahawa kuchambua.",
@@ -1807,7 +1866,7 @@ const SW = {
         supported_formats: "Zinazokubalika: JPG, PNG, WEBP (10MB kwa kila) - AI inathibitisha kahawa",
         analyze_all: "Chambua Picha Zote", remove_all: "Ondoa Zote",
         analysis_complete: "Uchambuzi Umekamilika", result: "Matokeo", confidence: "Uhakika",
-        total_ripe: "Jumla Iliyoiva", total_ripening: "Jumla Inayoiva", total_unripe: "Jumla Isiyoiva",
+        total_ripe: "Jumla Iliyoiva", total_ripening: "Jumla Inayoiva", total_unripe: "Jumla Isiyoiva", total_spoilt: "Jumla Iliyooza",
         avg_confidence: "Wastani wa Uhakika", recent_predictions: "Utabiri wa Hivi Karibuni",
         image: "Picha", date: "Tarehe", predict: "Tabiri", new_images: "Picha Mpya",
         history: "Historia", export_data: "Hamisha Data", footer_note: "Weka mimea yako ya kahawa ikiwa na afya! Ufuatiliaji wa mara kwa mara huleta mavuno bora.",
@@ -1919,7 +1978,21 @@ function showPage(pageId) {
     if (pageId === 'coffeescope') refreshCoffeeScope();
 }
 
-function openModal(id) { const modal = document.getElementById(id); if (modal) modal.style.display = 'flex'; }
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'flex';
+    if (id === 'supportModal') resetPaymentModal();
+    if (id === 'profileModal') {
+        // Show/hide delete button based on avatar
+        const avatarImg = document.getElementById('avatarImage');
+        const deleteBtn = document.getElementById('avatarDeleteBtn');
+        if (avatarImg.style.display !== 'none' && avatarImg.src) {
+            deleteBtn.classList.remove('hidden');
+        } else {
+            deleteBtn.classList.add('hidden');
+        }
+    }
+}
 function closeModal(id) { const modal = document.getElementById(id); if (modal) modal.style.display = 'none'; }
 window.onclick = function(e) { if (e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
@@ -1940,6 +2013,33 @@ function downloadPDF() {
 }
 
 // ============================================================
+// BACKEND CONFIG
+// ============================================================
+const API_BASE = '';
+
+const API = {
+    predict: `${API_BASE}/predict_multiple`,
+    pay: `${API_BASE}/pay`,
+    confirmPayment: `${API_BASE}/confirm_payment`,
+    coffeeNews: `${API_BASE}/api/coffee_news`
+};
+
+async function apiFetch(url, options = {}) {
+    let response;
+    try {
+        response = await fetch(url, options);
+    } catch (err) {
+        throw new Error(`Could not reach the server at ${url}. Is your Flask app running? (${err.message})`);
+    }
+    if (!response.ok) {
+        let detail = '';
+        try { detail = (await response.json()).error || ''; } catch (e) { /* ignore */ }
+        throw new Error(`Server returned ${response.status}${detail ? ': ' + detail : ''}`);
+    }
+    return response.json();
+}
+
+// ============================================================
 // DATA STORE
 // ============================================================
 let predictionHistory = [];
@@ -1948,7 +2048,7 @@ let uploadedFileData = [];
 let currentAvatar = null;
 let reportData = [];
 let coffeeScopeInterval = null;
-let priceMode = 'fresh'; // 'fresh' or 'kiboko'
+let priceMode = 'fresh';
 
 // ============================================================
 // PROFILE FUNCTIONS
@@ -1959,15 +2059,85 @@ function handleAvatarUpload(e) {
     const reader = new FileReader();
     reader.onload = function(ev) {
         currentAvatar = ev.target.result;
-        document.querySelectorAll('.avatar-placeholder').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.avatar-preview img, #avatarImage, #dashboardAvatarImage, #dashboardAvatarImage2, #dashboardAvatarImage3, #dashboardAvatarImage4').forEach(img => {
-            if (img) { img.src = currentAvatar; img.style.display = 'block'; }
-        });
-        document.querySelectorAll('.avatar-preview .avatar-placeholder').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.topbar-avatar .avatar-placeholder').forEach(el => el.style.display = 'none');
-        showToast('Profile photo updated!', 'success');
+        updateAvatarDisplay(currentAvatar);
+        // Show delete button
+        document.getElementById('avatarDeleteBtn').classList.remove('hidden');
+        showToast('Profile photo uploaded!', 'success');
     };
     reader.readAsDataURL(file);
+}
+
+function deleteAvatar() {
+    if (confirm('Are you sure you want to delete your profile photo?')) {
+        currentAvatar = null;
+        updateAvatarDisplay(null);
+        document.getElementById('avatarDeleteBtn').classList.add('hidden');
+        // Save to server
+        saveProfileToServer(currentAvatar);
+        showToast('Profile photo deleted!', 'success');
+    }
+}
+
+function updateAvatarDisplay(avatarData) {
+    const placeholderElements = document.querySelectorAll('.avatar-placeholder');
+    const avatarImages = document.querySelectorAll('.topbar-avatar img, #avatarImage');
+    
+    if (avatarData) {
+        placeholderElements.forEach(el => el.style.display = 'none');
+        avatarImages.forEach(img => {
+            img.src = avatarData;
+            img.style.display = 'block';
+        });
+        // Also update dashboard avatar
+        document.querySelectorAll('.topbar-avatar .avatar-placeholder').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.topbar-avatar img').forEach(img => {
+            img.src = avatarData;
+            img.style.display = 'block';
+        });
+        document.getElementById('avatarDeleteBtn').classList.remove('hidden');
+    } else {
+        placeholderElements.forEach(el => el.style.display = 'flex');
+        avatarImages.forEach(img => {
+            img.style.display = 'none';
+            img.src = '';
+        });
+        document.querySelectorAll('.topbar-avatar .avatar-placeholder').forEach(el => el.style.display = 'flex');
+        document.querySelectorAll('.topbar-avatar img').forEach(img => {
+            img.style.display = 'none';
+            img.src = '';
+        });
+        document.getElementById('avatarDeleteBtn').classList.add('hidden');
+    }
+}
+
+async function saveProfileToServer(avatarData) {
+    const name = document.getElementById('profileName').value;
+    const email = document.getElementById('profileEmail').value;
+    const phone = document.getElementById('profilePhone').value;
+    const location = document.getElementById('profileLocation').value;
+    
+    try {
+        const response = await apiFetch('/save_profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fullname: name,
+                email: email,
+                phone: phone,
+                location: location,
+                avatar_data: avatarData
+            })
+        });
+        if (response.status === 'success') {
+            // Update local storage
+            localStorage.setItem('coffeeguard_profile', JSON.stringify({
+                name, email, phone, location, avatar: avatarData
+            }));
+            document.getElementById('userNameDisplay').textContent = name || 'Coffee Farmer';
+        }
+    } catch (err) {
+        console.error('Error saving profile:', err);
+    }
 }
 
 function saveProfile() {
@@ -1975,27 +2145,62 @@ function saveProfile() {
     const email = document.getElementById('profileEmail').value;
     const phone = document.getElementById('profilePhone').value;
     const location = document.getElementById('profileLocation').value;
-    localStorage.setItem('coffeeguard_profile', JSON.stringify({ name, email, phone, location, avatar: currentAvatar }));
+    
+    // Save to server with current avatar
+    saveProfileToServer(currentAvatar);
+    
+    // Update local storage
+    localStorage.setItem('coffeeguard_profile', JSON.stringify({
+        name, email, phone, location, avatar: currentAvatar
+    }));
     document.getElementById('userNameDisplay').textContent = name || 'Coffee Farmer';
     showToast('Profile saved successfully!', 'success');
     closeModal('profileModal');
 }
 
 function loadProfile() {
+    // First try to load from localStorage
     const data = JSON.parse(localStorage.getItem('coffeeguard_profile') || '{}');
     if (data.name) document.getElementById('userNameDisplay').textContent = data.name;
     if (data.name) document.getElementById('profileName').value = data.name;
     if (data.email) document.getElementById('profileEmail').value = data.email;
     if (data.phone) document.getElementById('profilePhone').value = data.phone;
     if (data.location) document.getElementById('profileLocation').value = data.location;
+    
     if (data.avatar) {
         currentAvatar = data.avatar;
-        document.querySelectorAll('.avatar-placeholder').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.avatar-preview img, #avatarImage, #dashboardAvatarImage, #dashboardAvatarImage2, #dashboardAvatarImage3, #dashboardAvatarImage4').forEach(img => {
-            if (img) { img.src = currentAvatar; img.style.display = 'block'; }
-        });
-        document.querySelectorAll('.avatar-preview .avatar-placeholder').forEach(el => el.style.display = 'none');
-        document.querySelectorAll('.topbar-avatar .avatar-placeholder').forEach(el => el.style.display = 'none');
+        updateAvatarDisplay(currentAvatar);
+    } else {
+        // Try to load from server
+        fetchProfileFromServer();
+    }
+}
+
+async function fetchProfileFromServer() {
+    try {
+        const response = await apiFetch('/api/profile', { method: 'GET' });
+        if (response && response.fullname) {
+            document.getElementById('userNameDisplay').textContent = response.fullname;
+            document.getElementById('profileName').value = response.fullname || '';
+            document.getElementById('profileEmail').value = response.email || '';
+            document.getElementById('profilePhone').value = response.phone || '';
+            document.getElementById('profileLocation').value = response.location || 'Uganda';
+            
+            if (response.avatar_data) {
+                currentAvatar = response.avatar_data;
+                updateAvatarDisplay(currentAvatar);
+                // Update local storage
+                const data = JSON.parse(localStorage.getItem('coffeeguard_profile') || '{}');
+                data.name = response.fullname;
+                data.email = response.email;
+                data.phone = response.phone;
+                data.location = response.location;
+                data.avatar = response.avatar_data;
+                localStorage.setItem('coffeeguard_profile', JSON.stringify(data));
+            }
+        }
+    } catch (err) {
+        console.error('Error fetching profile from server:', err);
     }
 }
 
@@ -2058,28 +2263,92 @@ function sendHelpEmail() {
     showToast('Help request sent!', 'success');
 }
 
-function sendSupport() {
-    const name = document.getElementById('supportName').value || 'Anonymous';
-    const phone = document.getElementById('supportPhone').value || 'Not provided';
-    const amount = document.getElementById('supportAmount').value || '0';
+let pendingPaymentReference = null;
+
+async function requestPayment() {
+    const fullname = document.getElementById('supportName').value || 'Anonymous';
+    const phone = document.getElementById('supportPhone').value || '';
+    const amount = parseInt(document.getElementById('supportAmount').value, 10) || 0;
     const statusDiv = document.getElementById('paymentStatus');
+
+    if (!phone || amount <= 0) {
+        statusDiv.className = 'payment-status failed';
+        statusDiv.innerHTML = `<i class="fas fa-circle-xmark"></i> Please enter a valid phone number and amount.`;
+        statusDiv.style.display = 'block';
+        return;
+    }
+
     statusDiv.className = 'payment-status pending';
-    statusDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing payment of UGX ${amount} from ${phone}...`;
+    statusDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Creating your payment request...`;
     statusDiv.style.display = 'block';
-    setTimeout(() => {
-        const success = Math.random() > 0.3;
-        if (success) {
-            statusDiv.className = 'payment-status completed';
-            statusDiv.innerHTML = `<i class="fas fa-circle-check"></i> Payment of UGX ${amount} received! Thank you ${name} for supporting CoffeeGuard.`;
-        } else {
-            statusDiv.className = 'payment-status failed';
-            statusDiv.innerHTML = `<i class="fas fa-circle-xmark"></i> Payment failed. Please try again or use a different number.`;
-        }
-    }, 2000);
+
+    try {
+        const result = await apiFetch(API.pay, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fullname, phone, amount })
+        });
+
+        pendingPaymentReference = result.reference;
+        document.getElementById('paymentInstructions').innerHTML = `
+            <strong>Reference: ${result.reference}</strong><br>
+            ${result.message}
+        `;
+        document.getElementById('paymentStep1').style.display = 'none';
+        document.getElementById('paymentStep2').style.display = 'block';
+        statusDiv.style.display = 'none';
+    } catch (err) {
+        statusDiv.className = 'payment-status failed';
+        statusDiv.innerHTML = `<i class="fas fa-circle-xmark"></i> ${err.message}`;
+    }
+}
+
+async function submitPaymentConfirmation() {
+    const momoTransactionId = document.getElementById('momoTransactionId').value.trim();
+    const statusDiv = document.getElementById('paymentStatus');
+
+    if (!momoTransactionId) {
+        statusDiv.className = 'payment-status failed';
+        statusDiv.innerHTML = `<i class="fas fa-circle-xmark"></i> Enter the transaction ID from your MoMo/Airtel confirmation SMS.`;
+        statusDiv.style.display = 'block';
+        return;
+    }
+    if (!pendingPaymentReference) {
+        statusDiv.className = 'payment-status failed';
+        statusDiv.innerHTML = `<i class="fas fa-circle-xmark"></i> No active payment request — click "Back" and start again.`;
+        statusDiv.style.display = 'block';
+        return;
+    }
+
+    statusDiv.className = 'payment-status pending';
+    statusDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Submitting for verification...`;
+    statusDiv.style.display = 'block';
+
+    try {
+        const result = await apiFetch(API.confirmPayment, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reference: pendingPaymentReference, momo_transaction_id: momoTransactionId })
+        });
+        statusDiv.className = 'payment-status pending';
+        statusDiv.innerHTML = `<i class="fas fa-clock"></i> ${result.message}`;
+        showToast('Payment submitted for manual verification!', 'success');
+    } catch (err) {
+        statusDiv.className = 'payment-status failed';
+        statusDiv.innerHTML = `<i class="fas fa-circle-xmark"></i> ${err.message}`;
+    }
+}
+
+function resetPaymentModal() {
+    pendingPaymentReference = null;
+    document.getElementById('paymentStep1').style.display = 'block';
+    document.getElementById('paymentStep2').style.display = 'none';
+    document.getElementById('paymentStatus').style.display = 'none';
+    document.getElementById('momoTransactionId').value = '';
 }
 
 // ============================================================
-// COFFEE IMAGE VALIDATION
+// IMAGE VALIDATION
 // ============================================================
 function analyzeImageForCoffee(imageData) {
     return new Promise((resolve) => {
@@ -2176,7 +2445,9 @@ async function handleMultipleFileUpload(event) {
             continue;
         }
         const validationResult = await validateCoffeeImage(file);
-        if (validationResult.isCoffee) {
+        const accepted = validationResult.detectedType !== 'error';
+        if (accepted) {
+            validationResult.isCoffee = true;
             validFiles.push(validationResult);
             uploadedFiles.push(file);
             uploadedFileData.push(validationResult);
@@ -2240,7 +2511,8 @@ async function handleMultipleFileUpload(event) {
             const confText = document.createElement('div');
             confText.className = 'coffee-confidence';
             const confLevel = validationResult.confidence > 70 ? 'high' : (validationResult.confidence > 40 ? 'medium' : 'low');
-            confText.innerHTML = `Coffee detected <span class="${confLevel}">${Math.round(validationResult.confidence)}%</span>`;
+            const readyLabel = confLevel === 'low' ? 'Quick check: verify manually' : 'Looks like coffee';
+            confText.innerHTML = `${readyLabel} <span class="${confLevel}">${Math.round(validationResult.confidence)}%</span>`;
             wrapper.appendChild(confText);
             previewContainer.appendChild(wrapper);
         } else {
@@ -2263,7 +2535,7 @@ async function handleMultipleFileUpload(event) {
             imgWrapper.appendChild(img);
             const badge = document.createElement('span');
             badge.className = 'validation-badge failed';
-            badge.textContent = '⛔ Rejected';
+            badge.textContent = '⛔ Unreadable';
             badge.style.position = 'absolute';
             badge.style.bottom = '4px';
             badge.style.right = '4px';
@@ -2279,7 +2551,7 @@ async function handleMultipleFileUpload(event) {
             rejectText.style.fontSize = '0.6rem';
             rejectText.style.color = '#cc5555';
             rejectText.style.marginTop = '2px';
-            rejectText.textContent = 'Not coffee';
+            rejectText.textContent = 'Could not read file';
             wrapper.appendChild(rejectText);
             previewContainer.appendChild(wrapper);
         }
@@ -2293,13 +2565,22 @@ async function handleMultipleFileUpload(event) {
         showToast(`${validFiles.length} coffee images accepted!`, 'success');
     }
     if (rejectedCount > 0) {
-        document.getElementById('errorMessage').textContent = `❌ ${rejectedCount} file(s) rejected. Please upload only coffee cherry images.`;
+        document.getElementById('errorMessage').textContent = `❌ ${rejectedCount} file(s) could not be read and were skipped.`;
         errorDiv.classList.add('show');
     }
     updateStats();
 }
 
-function analyzeImages() {
+function normalizeClass(raw) {
+    const val = String(raw || '').toLowerCase().trim();
+    if (val.startsWith('ripe') && !val.startsWith('ripening') && !val.startsWith('unripe')) return 'ripe';
+    if (val.startsWith('unripe')) return 'unripe';
+    if (val.startsWith('ripening') || val.includes('semi')) return 'ripening';
+    if (val.startsWith('spoil') || val.includes('rotten') || val.includes('damaged')) return 'spoilt';
+    return val || 'unknown';
+}
+
+async function analyzeImages() {
     if (uploadedFiles.length === 0) {
         showToast('Please upload some coffee images first.', 'error');
         return;
@@ -2307,51 +2588,58 @@ function analyzeImages() {
     const resultDiv = document.getElementById('predictionResult');
     resultDiv.style.display = 'block';
     const summaryDiv = document.getElementById('analysisSummary');
-    summaryDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing coffee images...';
-    setTimeout(() => {
-        const results = uploadedFiles.map((file, idx) => {
-            const validation = uploadedFileData[idx] || { confidence: 50 };
-            const baseConf = validation.confidence || 50;
-            const classes = ['ripe', 'ripening', 'unripe'];
-            let weights = [0.33, 0.33, 0.34];
-            if (validation.scores) {
-                if (validation.scores.red > 0.1) weights = [0.6, 0.3, 0.1];
-                else if (validation.scores.green > 0.1) weights = [0.1, 0.3, 0.6];
-                else if (validation.scores.brown > 0.1) weights = [0.2, 0.5, 0.3];
-            }
-            let rand = Math.random();
-            let cumSum = 0;
-            let selected = 0;
-            for (let i = 0; i < weights.length; i++) {
-                cumSum += weights[i];
-                if (rand < cumSum) { selected = i; break; }
-            }
-            const conf = Math.min(98, Math.round((baseConf * 0.5 + 35 + Math.random() * 30)));
-            return { class: classes[selected], confidence: conf };
-        });
-        let ripe = 0, ripening = 0, unripe = 0, totalConf = 0;
-        results.forEach(r => {
-            if (r.class === 'ripe') ripe++;
-            else if (r.class === 'ripening') ripening++;
-            else unripe++;
-            totalConf += r.confidence;
-        });
-        const avgConf = Math.round(totalConf / results.length);
-        results.forEach((r, i) => {
-            const fileName = uploadedFiles[i]?.name || `coffee_${i+1}`;
-            addHistoryEntry(fileName, r.class, r.confidence);
-        });
-        updateStats();
-        loadHistory();
-        summaryDiv.innerHTML = `
-            <strong>${uploadedFiles.length}</strong> coffee images analyzed.<br>
-            🟢 Ripe: <strong>${ripe}</strong> &nbsp;|&nbsp;
-            🟡 Ripening: <strong>${ripening}</strong> &nbsp;|&nbsp;
-            🔴 Unripe: <strong>${unripe}</strong><br>
-            Average confidence: <strong>${avgConf}%</strong>
-        `;
-        showToast('Coffee analysis complete!', 'success');
-    }, 1500);
+    summaryDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing coffee images with CoffeeGuardAI model...';
+
+    const formData = new FormData();
+    uploadedFiles.forEach(file => formData.append('images', file));
+
+    let payload;
+    try {
+        payload = await apiFetch(API.predict, { method: 'POST', body: formData });
+    } catch (err) {
+        summaryDiv.innerHTML = `<span style="color:#cc5555;"><i class="fas fa-triangle-exclamation"></i> Analysis failed: ${err.message}</span>`;
+        showToast('Could not reach the prediction server. Are you logged in and is Flask running?', 'error');
+        return;
+    }
+
+    const rawResults = payload.results || [];
+    if (!rawResults.length) {
+        summaryDiv.innerHTML = `<span style="color:#cc5555;">Server responded but returned no results.</span>`;
+        showToast('Prediction server returned an empty result.', 'error');
+        return;
+    }
+
+    const results = rawResults.map(r => {
+        const cls = normalizeClass(r.result ?? r.class ?? r.label ?? r.prediction);
+        let conf = r.confidence ?? r.score ?? r.probability ?? 0;
+        if (conf <= 1) conf = conf * 100;
+        return { class: cls, confidence: Math.round(conf), filename: r.filename };
+    });
+
+    let ripe = 0, ripening = 0, unripe = 0, spoilt = 0, totalConf = 0;
+    results.forEach(r => {
+        if (r.class === 'ripe') ripe++;
+        else if (r.class === 'ripening') ripening++;
+        else if (r.class === 'unripe') unripe++;
+        else if (r.class === 'spoilt') spoilt++;
+        totalConf += r.confidence;
+    });
+    const avgConf = Math.round(totalConf / results.length);
+    results.forEach((r, i) => {
+        const fileName = r.filename || uploadedFiles[i]?.name || `coffee_${i + 1}`;
+        addHistoryEntry(fileName, r.class, r.confidence);
+    });
+    updateStats();
+    loadHistory();
+    const spoiltLine = spoilt > 0 ? `&nbsp;|&nbsp;🟤 Spoilt: <strong>${spoilt}</strong>` : '';
+    summaryDiv.innerHTML = `
+        <strong>${results.length}</strong> coffee images analyzed by CoffeeGuardAI.<br>
+        🟢 Ripe: <strong>${ripe}</strong> &nbsp;|&nbsp;
+        🟡 Ripening: <strong>${ripening}</strong> &nbsp;|&nbsp;
+        🌱 Unripe: <strong>${unripe}</strong>${spoiltLine}<br>
+        Average confidence: <strong>${avgConf}%</strong>
+    `;
+    showToast('Coffee analysis complete!', 'success');
 }
 
 function addHistoryEntry(imageName, result, confidence) {
@@ -2369,11 +2657,12 @@ function addHistoryEntry(imageName, result, confidence) {
 
 function updateStats() {
     const hist = predictionHistory;
-    let ripe = 0, ripening = 0, unripe = 0, totalConf = 0;
+    let ripe = 0, ripening = 0, unripe = 0, spoilt = 0, totalConf = 0;
     hist.forEach(h => {
         if (h.result === 'ripe') ripe++;
         else if (h.result === 'ripening') ripening++;
         else if (h.result === 'unripe') unripe++;
+        else if (h.result === 'spoilt') spoilt++;
         totalConf += h.confidence || 0;
     });
     const avgConf = hist.length > 0 ? Math.round(totalConf / hist.length) : 0;
@@ -2381,10 +2670,12 @@ function updateStats() {
     document.getElementById('statRipe').textContent = ripe;
     document.getElementById('statRipening').textContent = ripening;
     document.getElementById('statUnripe').textContent = unripe;
+    document.getElementById('statSpoilt').textContent = spoilt;
     document.getElementById('statAvgConf').textContent = avgConf + '%';
     document.getElementById('ripeCount').textContent = ripe;
     document.getElementById('ripeningCount').textContent = ripening;
     document.getElementById('unripeCount').textContent = unripe;
+    document.getElementById('spoiltCount').textContent = spoilt;
     document.getElementById('totalCount').textContent = total;
 }
 
@@ -2396,7 +2687,7 @@ function loadHistory() {
     const display = predictionHistory.slice(0, 20);
     display.forEach(h => {
         const tr = document.createElement('tr');
-        const badgeClass = h.result === 'ripe' ? 'badge-ripe' : (h.result === 'ripening' ? 'badge-ripening' : 'badge-unripe');
+        const badgeClass = h.result === 'ripe' ? 'badge-ripe' : (h.result === 'ripening' ? 'badge-ripening' : (h.result === 'spoilt' ? 'badge-spoilt' : 'badge-unripe'));
         const label = h.result.charAt(0).toUpperCase() + h.result.slice(1);
         tr.innerHTML = `
             <td><i class="fas fa-image" style="color:#8b1a1a;"></i> ${h.image}</td>
@@ -2443,11 +2734,12 @@ function generateReport() {
         showToast('No prediction data to generate a report. Upload and analyze some coffee images first.', 'error');
         return;
     }
-    let ripe = 0, ripening = 0, unripe = 0;
+    let ripe = 0, ripening = 0, unripe = 0, spoilt = 0;
     hist.forEach(h => {
         if (h.result === 'ripe') ripe++;
         else if (h.result === 'ripening') ripening++;
         else if (h.result === 'unripe') unripe++;
+        else if (h.result === 'spoilt') spoilt++;
     });
     const report = {
         id: Date.now(),
@@ -2456,7 +2748,8 @@ function generateReport() {
         ripe,
         ripening,
         unripe,
-        summary: `Ripe: ${ripe}, Ripening: ${ripening}, Unripe: ${unripe}`
+        spoilt,
+        summary: `Ripe: ${ripe}, Ripening: ${ripening}, Unripe: ${unripe}, Spoilt: ${spoilt}`
     };
     reportData.unshift(report);
     localStorage.setItem('coffeeguard_reports', JSON.stringify(reportData));
@@ -2489,6 +2782,7 @@ function loadReports() {
                 <span style="color:#3e9e6d;">✅ Ripe: ${r.ripe}</span>
                 <span style="color:#e6b85e;">⏳ Ripening: ${r.ripening}</span>
                 <span style="color:#c97a5a;">❌ Unripe: ${r.unripe}</span>
+                <span style="color:#7a4a4a;">⚠️ Spoilt: ${r.spoilt || 0}</span>
             </div>
         `;
         div.onclick = () => viewReport(r.id);
@@ -2499,7 +2793,7 @@ function loadReports() {
 function viewReport(id) {
     const report = reportData.find(r => r.id === id);
     if (!report) return;
-    alert(`📊 Report Details\n\nDate: ${report.date}\nTotal Cherries: ${report.total}\nRipe: ${report.ripe}\nRipening: ${report.ripening}\nUnripe: ${report.unripe}\n\n${report.summary}`);
+    alert(`📊 Report Details\n\nDate: ${report.date}\nTotal Cherries: ${report.total}\nRipe: ${report.ripe}\nRipening: ${report.ripening}\nUnripe: ${report.unripe}\nSpoilt: ${report.spoilt || 0}\n\n${report.summary}`);
 }
 
 // ============================================================
@@ -2509,22 +2803,23 @@ let barChart, pieChart;
 
 function updateCharts() {
     const hist = predictionHistory;
-    let ripe = 0, ripening = 0, unripe = 0;
+    let ripe = 0, ripening = 0, unripe = 0, spoilt = 0;
     hist.forEach(h => {
         if (h.result === 'ripe') ripe++;
         else if (h.result === 'ripening') ripening++;
         else if (h.result === 'unripe') unripe++;
+        else if (h.result === 'spoilt') spoilt++;
     });
     const ctx = document.getElementById('advancedBarChart').getContext('2d');
     if (barChart) barChart.destroy();
     barChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Ripe', 'Ripening', 'Unripe'],
+            labels: ['Ripe', 'Ripening', 'Unripe', 'Spoilt'],
             datasets: [{
                 label: 'Coffee Cherries',
-                data: [ripe, ripening, unripe],
-                backgroundColor: ['#3e9e6d', '#e6b85e', '#c97a5a'],
+                data: [ripe, ripening, unripe, spoilt],
+                backgroundColor: ['#3e9e6d', '#e6b85e', '#c97a5a', '#7a4a4a'],
                 borderRadius: 6
             }]
         },
@@ -2551,21 +2846,22 @@ function updatePieChart() {
             });
         }
     }
-    let ripe = 0, ripening = 0, unripe = 0;
+    let ripe = 0, ripening = 0, unripe = 0, spoilt = 0;
     data.forEach(h => {
         if (h.result === 'ripe') ripe++;
         else if (h.result === 'ripening') ripening++;
         else if (h.result === 'unripe') unripe++;
+        else if (h.result === 'spoilt') spoilt++;
     });
     const ctx = document.getElementById('advancedPieChart').getContext('2d');
     if (pieChart) pieChart.destroy();
     pieChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: ['Ripe', 'Ripening', 'Unripe'],
+            labels: ['Ripe', 'Ripening', 'Unripe', 'Spoilt'],
             datasets: [{
-                data: [ripe, ripening, unripe],
-                backgroundColor: ['#3e9e6d', '#e6b85e', '#c97a5a'],
+                data: [ripe, ripening, unripe, spoilt],
+                backgroundColor: ['#3e9e6d', '#e6b85e', '#c97a5a', '#7a4a4a'],
                 borderColor: 'white',
                 borderWidth: 2
             }]
@@ -2573,13 +2869,20 @@ function updatePieChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom' } }
+            plugins: { 
+                legend: { 
+                    position: 'bottom',
+                    labels: { boxWidth: 12, padding: 8, font: { size: 10 } }
+                } 
+            },
+            // Reduce pie chart size
+            cutout: '30%'
         }
     });
 }
 
 // ============================================================
-// CORRECTED ESTIMATOR FUNCTIONS
+// ESTIMATOR FUNCTIONS
 // ============================================================
 function setPriceMode(mode) {
     priceMode = mode;
@@ -2599,50 +2902,37 @@ function updateEstimator() {
     const ripening = parseInt(document.getElementById('estRipening').value) || 0;
     const unripe = parseInt(document.getElementById('estUnripe').value) || 0;
     
-    // Conversion factors (cherries per kg)
     const ripePerKg = 500;
     const ripeningPerKg = 600;
     const unripePerKg = 1000;
     
-    // UCDA farmgate prices (UGX per kg of fresh cherry)
-    const ripePriceFresh = 5250;   // Wet mill gate price for ripe cherries
-    const ripeningPriceFresh = 2500; // Some buyers pay less for ripening
-    // Unripe has NO market value
+    const ripePriceFresh = 5250;
+    const ripeningPriceFresh = 2500;
     
-    // Drying ratio: 2.2 kg fresh = 1 kg Kiboko
     const dryingRatio = 2.2;
     
-    // Calculate kgs
     let ripeKg = ripe / ripePerKg;
     let ripeningKg = ripening / ripeningPerKg;
     let unripeKg = unripe / unripePerKg;
     
-    // Adjust for Kiboko mode (divide by drying ratio)
     let ripePrice = ripePriceFresh;
     let ripeningPrice = ripeningPriceFresh;
     let displaySuffix = '';
     
     if (priceMode === 'kiboko') {
-        ripePrice = ripePriceFresh * dryingRatio; // Kiboko price is higher per kg
+        ripePrice = ripePriceFresh * dryingRatio;
         ripeningPrice = ripeningPriceFresh * dryingRatio;
         displaySuffix = ' (Kiboko equiv.)';
     }
     
-    // Calculate values
     const ripeValue = ripeKg * ripePrice;
     const ripeningValue = ripeningKg * ripeningPrice;
-    const unripeValue = 0; // No market for unripe
+    const unripeValue = 0;
     
-    // Future value if ripening cherries were left to ripen
     const ripeningFutureValue = ripeningKg * ripePrice;
-    
-    // Opportunity cost of picking unripe (what you lose)
     const unripeOpportunityCost = unripeKg * ripePrice;
-    
-    // Total earnings = only ripe cherries are sellable
     const totalValue = ripeValue;
     
-    // Update DOM
     document.getElementById('estRipeKg').textContent = ripeKg.toFixed(2) + ' kg' + displaySuffix;
     document.getElementById('estRipeningKg').textContent = ripeningKg.toFixed(2) + ' kg' + displaySuffix;
     document.getElementById('estUnripeKg').textContent = unripeKg.toFixed(2) + ' kg' + displaySuffix;
@@ -2656,72 +2946,64 @@ function updateEstimator() {
 // ============================================================
 // COFFEESCOPE
 // ============================================================
-function fetchCoffeeNews() {
-    const images = [
-        'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1517959100558-1b3bae50cd9f?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=200&fit=crop'
-    ];
-    return [
-        {
-            title: "Uganda Coffee Exports Hit Record High in 2026",
-            snippet: "Uganda's coffee exports reached a historic high of 6.3 million bags, driven by robust demand from Europe and Asia.",
-            date: "2 hours ago",
-            source: "Daily Monitor",
-            image: images[0]
-        },
-        {
-            title: "New Coffee Wilt Disease Resistant Variety Released",
-            snippet: "The National Coffee Research Institute has released a new variety resistant to Coffee Wilt Disease.",
-            date: "4 hours ago",
-            source: "New Vision",
-            image: images[1]
-        },
-        {
-            title: "EU Grants Shs 20 Billion for Uganda Coffee Value Addition",
-            snippet: "The European Union has provided a grant of 20 billion shillings to support coffee processing.",
-            date: "6 hours ago",
-            source: "Uganda Radio Network",
-            image: images[2]
-        },
-        {
-            title: "Coffee Farmers in Masaka Embrace Digital Monitoring",
-            snippet: "Farmers in the Masaka region are adopting digital tools like CoffeeGuard to monitor plant health.",
-            date: "Yesterday",
-            source: "The Observer",
-            image: images[3]
-        },
-        {
-            title: "Global Coffee Prices Surge Amid Supply Concerns",
-            snippet: "Coffee prices have surged on global markets due to supply constraints in major producing countries.",
-            date: "Yesterday",
-            source: "Reuters",
-            image: images[4]
-        },
-        {
-            title: "Youth Embrace Coffee Farming in Uganda's Rwenzori Region",
-            snippet: "More young Ugandans are taking up coffee farming as a career, driven by access to technology.",
-            date: "2 days ago",
-            source: "The Ugandan",
-            image: images[5]
-        },
-        {
-            title: "Climate-Smart Coffee Farming Techniques Boost Yields",
-            snippet: "New climate-smart farming techniques are helping farmers adapt to changing weather patterns.",
-            date: "2 days ago",
-            source: "Climate Action",
-            image: images[6]
-        }
-    ];
+const FALLBACK_NEWS_IMAGES = [
+    'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400&h=200&fit=crop',
+    'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=200&fit=crop',
+    'https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?w=400&h=200&fit=crop',
+    'https://images.unsplash.com/photo-1517959100558-1b3bae50cd9f?w=400&h=200&fit=crop'
+];
+
+function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const then = new Date(dateStr).getTime();
+    if (isNaN(then)) return dateStr;
+    const diffMs = Date.now() - then;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins} min${mins === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return 'Yesterday';
+    return `${days} days ago`;
 }
 
-function renderCoffeeScopeFeed() {
+async function fetchCoffeeNews() {
+    try {
+        const payload = await apiFetch(API.coffeeNews, { method: 'GET' });
+        // The server now returns the array directly
+        const items = Array.isArray(payload) ? payload : (payload.articles || []);
+        return items.map((item, i) => ({
+            title: item.title || 'Untitled',
+            snippet: item.description || item.snippet || item.summary || '',
+            date: timeAgo(item.publishedAt || item.date || item.published || item.pubDate),
+            source: (item.source && item.source.name) || item.source || item.publisher || 'Unknown source',
+            link: item.url || item.link || '#',
+            image: item.urlToImage || item.image || item.image_url || FALLBACK_NEWS_IMAGES[i % FALLBACK_NEWS_IMAGES.length]
+        }));
+    } catch (err) {
+        console.error('Error fetching news:', err);
+        return [];
+    }
+}
+
+async function renderCoffeeScopeFeed() {
     const container = document.getElementById('coffeeScopeFeed');
-    const news = fetchCoffeeNews();
+    let news;
+    try {
+        news = await fetchCoffeeNews();
+    } catch (err) {
+        container.innerHTML = `
+            <div class="loading-spinner">
+                <i class="fas fa-triangle-exclamation" style="color:#cc5555;"></i>
+                <p>Couldn't load coffee news: ${err.message}</p>
+            </div>`;
+        return;
+    }
+    if (!news || news.length === 0) {
+        container.innerHTML = `<div class="loading-spinner"><p>No coffee news found right now.</p></div>`;
+        return;
+    }
     container.innerHTML = '';
     news.forEach(item => {
         const card = document.createElement('div');
@@ -2734,7 +3016,7 @@ function renderCoffeeScopeFeed() {
                 <div class="news-meta">
                     <span><i class="fas fa-clock"></i> ${item.date}</span>
                     <span><i class="fas fa-building"></i> ${item.source}</span>
-                    <a href="#" class="read-more" onclick="event.preventDefault(); showToast('Full article coming soon!', 'success')">Read more →</a>
+                    <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="read-more">Read more →</a>
                 </div>
             </div>
         `;
@@ -2742,13 +3024,15 @@ function renderCoffeeScopeFeed() {
     });
 }
 
-function refreshCoffeeScope() {
+async function refreshCoffeeScope() {
     const container = document.getElementById('coffeeScopeFeed');
-    container.innerHTML = `<div class="loading-spinner"><i class="fas fa-spinner"></i><p>Refreshing coffee news...</p></div>`;
-    setTimeout(() => {
-        renderCoffeeScopeFeed();
+    container.innerHTML = `<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Refreshing coffee news...</p></div>`;
+    try {
+        await renderCoffeeScopeFeed();
         showToast('CoffeeScope updated!', 'success');
-    }, 800);
+    } catch (err) {
+        showToast('Could not refresh CoffeeScope.', 'error');
+    }
 }
 
 // ============================================================
@@ -2803,11 +3087,10 @@ document.addEventListener('DOMContentLoaded', function() {
     updateEstimator();
     renderCoffeeScopeFeed();
     
-    // Set default price mode
     setPriceMode('fresh');
     
     if (coffeeScopeInterval) clearInterval(coffeeScopeInterval);
-    coffeeScopeInterval = setInterval(refreshCoffeeScope, 300000);
+    coffeeScopeInterval = setInterval(refreshCoffeeScope, 900000);
     
     window.addEventListener('resize', function() {
         if (window.barChart) window.barChart.resize();
