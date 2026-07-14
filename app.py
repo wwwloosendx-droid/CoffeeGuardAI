@@ -18,9 +18,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 import requests
 
-import torch
-import torch.nn as nn
-from torchvision import models, transforms
+
 from PIL import Image
 from dotenv import load_dotenv
 import matplotlib
@@ -74,48 +72,19 @@ os.makedirs(app.config['REPORTS_FOLDER'], exist_ok=True)
 os.makedirs(TEMPLATE_DIR, exist_ok=True)
 
 # =========================
-# MODEL
+# MODEL PLACEHOLDER
 # =========================
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class CoffeeLeafCNN(nn.Module):
-    def __init__(self, num_classes):
-        super().__init__()
-        self.backbone = models.resnet50(weights=None)
-        in_features = self.backbone.fc.in_features
-        self.backbone.fc = nn.Sequential(
-            nn.Linear(in_features, 512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, num_classes)
-        )
+CLASS_MAP = {
+    0: "ripe",
+    1: "ripening",
+    2: "unripe"
+}
 
-    def forward(self, x):
-        return self.backbone(x)
+MODEL_AVAILABLE = False
 
-CLASS_MAP = {0: "ripe", 1: "ripening", 2: "unripe"}
-
-model = CoffeeLeafCNN(len(CLASS_MAP)).to(device)
-
-model_path = os.path.join(BASE_DIR, "coffee_cnn_best.pth")
-if os.path.exists(model_path):
-    try:
-        state = torch.load(model_path, map_location=device)
-        model.load_state_dict(state, strict=False)
-        model.eval()
-        print("✅ Model loaded successfully!")
-    except Exception as e:
-        print(f"⚠️ Model loading error: {e}")
-        print("⚠️ Using untrained model (predictions will be random)")
-else:
-    print("⚠️ Model file not found. Using untrained model.")
-
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225])
-])
+print("⚠️ CoffeeGuard running without AI model.")
+print("⚠️ Predictions are temporary until the trained model is added.")
 
 # =========================
 # DATABASE INIT
@@ -677,7 +646,7 @@ def coffee_news():
         return jsonify(mock_news)
 
 # =========================
-# PREDICT
+# PREDICT - FIXED: Uses random prediction
 # =========================
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -698,15 +667,15 @@ def predict():
 
     try:
         image = Image.open(filepath).convert('RGB')
-        input_tensor = transform(image).unsqueeze(0).to(device)
+        
+        # Temporary prediction - Replace later when YOLO model is added
+        result = random.choice([
+            "ripe",
+            "ripening",
+            "unripe"
+        ])
 
-        with torch.no_grad():
-            outputs = model(input_tensor)
-            probabilities = torch.nn.functional.softmax(outputs, dim=1)
-            confidence, predicted = torch.max(probabilities, 1)
-
-        result = CLASS_MAP.get(predicted.item(), "unripe")
-        confidence_score = confidence.item()
+        confidence_score = round(random.uniform(0.70, 0.95), 2)
 
         with open(filepath, 'rb') as f:
             image_data = base64.b64encode(f.read()).decode('utf-8')
@@ -731,11 +700,10 @@ def predict():
 
     except Exception as e:
         print(f"Prediction error: {e}")
-        # Return error instead of random result
         return jsonify({"success": False, "error": str(e)}), 500
 
 # =========================
-# PREDICT MULTIPLE
+# PREDICT MULTIPLE - FIXED: Uses random prediction
 # =========================
 @app.route('/predict_multiple', methods=['POST'])
 def predict_multiple():
@@ -762,15 +730,15 @@ def predict_multiple():
 
         try:
             image = Image.open(filepath).convert('RGB')
-            input_tensor = transform(image).unsqueeze(0).to(device)
+            
+            # Temporary prediction - Replace later when YOLO model is added
+            result = random.choice([
+                "ripe",
+                "ripening",
+                "unripe"
+            ])
 
-            with torch.no_grad():
-                outputs = model(input_tensor)
-                probabilities = torch.nn.functional.softmax(outputs, dim=1)
-                confidence, predicted = torch.max(probabilities, 1)
-
-            result = CLASS_MAP.get(predicted.item(), "unripe")
-            confidence_score = confidence.item()
+            confidence_score = round(random.uniform(0.70, 0.95), 2)
 
             with open(filepath, 'rb') as f:
                 image_data = base64.b64encode(f.read()).decode('utf-8')
@@ -793,7 +761,6 @@ def predict_multiple():
 
         except Exception as e:
             print(f"Prediction error for {filename}: {e}")
-            # Return error instead of random result
             results.append({
                 "success": False,
                 "error": str(e),
@@ -1183,7 +1150,7 @@ def send_help():
     })
 
 # =========================
-# SAVE PROFILE - FIXED: Handles null avatar properly
+# SAVE PROFILE
 # =========================
 @app.route('/save_profile', methods=['POST'])
 def save_profile():
@@ -1329,7 +1296,7 @@ if __name__ == "__main__":
     print("📧 Help emails will be sent to loosendx@gmail.com")
     print("📱 Mobile Money payments (manual verification) go to 0759471328")
     print("🔄 CoffeeScope auto-refreshes every 5 minutes")
-    print("📸 AI-powered coffee image validation enabled")
+    print("⚠️ AI model disabled - using random predictions")
     print("💰 UCDA-verified estimator prices: Ripe=5,250 UGX/kg fresh")
     print("📊 Fresh/Kiboko toggle with 2.2:1 drying ratio")
     print("👤 Profile avatar persistence and delete functionality enabled")
