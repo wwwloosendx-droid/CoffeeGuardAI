@@ -246,6 +246,37 @@
             display: block;
         }
 
+        .password-field {
+            display: flex;
+            align-items: center;
+        }
+
+        .password-field .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #8D8494;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+
+        .password-field .password-toggle:hover {
+            color: #E23F73;
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .password-field .password-toggle.visible svg {
+            stroke: #E23F73;
+        }
+
         .password-hint {
             font-size: 0.75rem;
             color: #8D8494;
@@ -301,12 +332,18 @@
                 <input type="email" name="email" placeholder="Email address" required value="{{ email or '' }}">
             </div>
 
-            <div class="field">
+            <div class="field password-field">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="4" y="11" width="16" height="9" rx="2"/>
                     <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
                 </svg>
-                <input type="password" name="password" placeholder="Password" required minlength="6">
+                <input id="registerPassword" type="password" name="password" placeholder="Password" required minlength="6">
+                <button type="button" class="password-toggle" onclick="toggleRegisterPasswordVisibility()" aria-label="Show or hide password">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
             </div>
             <div class="password-hint">Password must be at least 6 characters</div>
 
@@ -401,6 +438,15 @@
 
             return true;
         });
+
+        function toggleRegisterPasswordVisibility() {
+            const passwordInput = document.getElementById('registerPassword');
+            const toggleBtn = document.querySelector('.password-toggle');
+            if (!passwordInput) return;
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            toggleBtn.classList.toggle('visible', isPassword);
+        }
 
         // Auto-hide error after 8 seconds
         setTimeout(function() {
