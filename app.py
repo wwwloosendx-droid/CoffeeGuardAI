@@ -2311,13 +2311,17 @@ def refresh_references():
         return jsonify({"error": str(e)}), 500
 
 # =========================
-# MAIN
+# MAIN - FIXED FOR RENDER DEPLOYMENT
 # =========================
 if __name__ == "__main__":
     print("=" * 60)
     print("☕ CoffeeGuard AI - Disease Detection Running...")
     print("=" * 60)
-    print("📍 http://127.0.0.1:5000")
+    
+    # Get the port from Render's environment variable
+    port = int(os.environ.get("PORT", 5000))
+    
+    print(f"📍 Running on port: {port}")
     print("=" * 60)
     print("🤖 AI STATUS:", "✅ AI MODEL LOADED!" if MODEL_AVAILABLE else "⚠️ AI model disabled")
     if MODEL_AVAILABLE:
@@ -2331,4 +2335,10 @@ if __name__ == "__main__":
         print("💡 Please ensure best.pt is in the project directory")
         print("📁 Expected path:", os.path.join(BASE_DIR, 'best.pt'))
     print("=" * 60)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    
+    # Production settings - bind to all interfaces and use Render's port
+    app.run(
+        host='0.0.0.0', 
+        port=port, 
+        debug=False  # IMPORTANT: Debug must be False in production
+    )
