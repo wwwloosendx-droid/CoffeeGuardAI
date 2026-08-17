@@ -17,13 +17,14 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements file
 COPY requirements.txt .
 
-# Upgrade pip and make dependency installs more resilient to temporary PyPI 502s.
-RUN pip install --upgrade pip setuptools wheel && \
-    pip config set global.retries 5 && \
-    pip config set global.timeout 120
+# The build environment already has a compatible pip runtime. Avoid upgrading pip
+# here because PyPI sometimes returns 502s during the upgrade step, which breaks
+# the container build even though the project itself is fine.
+RUN python -m pip config set global.retries 5 && \
+    python -m pip config set global.timeout 120
 
 # Install Python dependencies with retries to reduce Render/Docker network flakiness.
-RUN pip install --no-cache-dir --prefer-binary --retries 5 --timeout 120 -r requirements.txt
+RUN python -m pip install --no-cache-dir --prefer-binary --retries 5 --timeout 120 -r requirements.txt
 
 # Copy all application files
 COPY . .
