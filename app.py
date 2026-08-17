@@ -1,4 +1,12 @@
 import os
+
+# Keep optional Hugging Face model files inside this project.  The app uses the
+# cached copy only, so a slow or unavailable internet connection never delays a
+# farmer's prediction request.
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+os.environ.setdefault('HF_HOME', os.path.join(PROJECT_DIR, '.model_cache'))
+os.environ.setdefault('HF_HUB_OFFLINE', '1')
+
 import sqlite3
 import json
 import base64
@@ -27,6 +35,12 @@ from dotenv import load_dotenv
 import torch
 import torch.nn as nn
 from ultralytics import YOLO
+try:
+    import timm
+    TIMM_AVAILABLE = True
+except ImportError:
+    timm = None
+    TIMM_AVAILABLE = False
 
 from flask import Flask, render_template, request, redirect, session, jsonify, send_file, make_response
 from werkzeug.utils import secure_filename
@@ -50,25 +64,27 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
 # Email configuration
-EMAIL_USER = os.getenv('EMAIL_USER', "loosendx@gmail.com")
-EMAIL_PASS = os.getenv('EMAIL_PASS', "frnn lzpn jstz oqqj")
+EMAIL_USER = os.getenv('EMAIL_USER', '')
+EMAIL_PASS = os.getenv('EMAIL_PASS', '')
 
 # Your phone number for receiving Mobile Money payments
 FARMER_PHONE = os.getenv('FARMER_PHONE', "0759471328")
 
 # News API configuration
-NEWS_API_KEY = os.getenv('NEWS_API_KEY', "19a58bf976a44e8689759ed06b302dc8")
+NEWS_API_KEY = os.getenv('NEWS_API_KEY', '')
 NEWS_API_URL = "https://newsapi.org/v2/everything"
 
 # =========================
 # FLASK APP
 # =========================
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
-app.secret_key = os.getenv('SECRET_KEY', 'coffee_guard_ai_secret_2026')
+app.secret_key = os.getenv('SECRET_KEY')
+if not app.secret_key:
+    raise RuntimeError('SECRET_KEY must be configured in the environment before starting CoffeeGuardAI.')
 
 # Session configuration
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['MAX_COOKIE_SIZE'] = 8192
@@ -96,32 +112,25 @@ class DiseaseReference:
     def __init__(self):
         self.reference_colors = {
             'brown_eye_spot': {
-                'hsv_ranges': [(10, 40, 30), (30, 255, 200)],  # Brown/yellow spots
-                'rgb_avg': [139, 105, 20],
-                'description': 'Brown circular spots with yellow halos on leaves',
+                'hsv_ranges': [(10, 40, 30), (25, 255, 200)],  # Brown lesions with reddish margins
+                'rgb_avg': [130, 75, 35],
+                'description': 'Brown leaf spots that enlarge and develop reddish-brown margins; repeated lesions may make leaves appear burnt.',
                 'emoji': '🍂',
                 'treatment': 'Monitor affected leaves, improve field sanitation, and consider an appropriate fungicide if the disease is spreading.'
             },
             'leaf_miner': {
-                'hsv_ranges': [(30, 30, 40), (80, 255, 200)],  # Yellow-green trails
-                'rgb_avg': [46, 125, 50],
-                'description': 'Serpentine mines/trails on leaf surface',
+                'hsv_ranges': [(10, 40, 40), (35, 255, 220)],  # Irregular brown/orange mining damage
+                'rgb_avg': [145, 95, 50],
+                'description': 'Internal leaf mines producing irregular brown or necrotic areas caused by larvae feeding between the leaf surfaces.',
                 'emoji': '🐛',
-                'treatment': 'Monitor infestation and use integrated pest management where needed.'
+                'treatment': 'Monitor infestation and use integrated pest management, including sanitation and biological controls where available.'
             },
             'leaf_rust': {
-                'hsv_ranges': [(0, 40, 30), (15, 255, 200)],  # Orange-red rust spots
-                'rgb_avg': [198, 40, 40],
-                'description': 'Yellow-orange powdery spots on leaf undersides',
+                'hsv_ranges': [(5, 80, 100), (25, 255, 255)],  # Pale yellow to orange rust spots
+                'rgb_avg': [210, 110, 40],
+                'description': 'Pale yellow spots that develop orange/rust-coloured pustules, often on the lower leaf surface.',
                 'emoji': '🔥',
                 'treatment': 'Apply a recommended fungicide and remove heavily infected leaves where appropriate.'
-            },
-            'red_spider_mite': {
-                'hsv_ranges': [(0, 30, 20), (10, 255, 150)],  # Red/bronze discoloration
-                'rgb_avg': [106, 27, 154],
-                'description': 'Fine webbing and stippling on leaves, reddish spots',
-                'emoji': '🕷️',
-                'treatment': 'Inspect plants regularly and use suitable mite control methods if populations become severe.'
             }
         }
         self.reference_images = {}
@@ -217,37 +226,40 @@ class DiseaseReference:
         brown_mask = cv2.inRange(patch_hsv, np.array((10, 40, 30), dtype=np.uint8), np.array((30, 255, 200), dtype=np.uint8))
         brown_metrics = self._largest_contour_metrics(brown_mask)
 
+        hsv_match_score = self._hsv_match_ratio(patch_hsv, self.reference_colors.get(class_name, {}).get('hsv_ranges'))
+        shape_bonus = min(edge_density * 1.8, 1.0)
+
         if class_name == 'brown_eye_spot':
-            pale_center = self._color_ratio(patch_hsv, (0, 0, 180), (180, 80, 255))
+            pale_center = self._color_ratio(patch_hsv, (0, 0, 160), (180, 110, 255))
+            dark_ring = self._color_ratio(patch_hsv, (0, 30, 15), (25, 255, 140))
+            center_contrast = max(0.0, pale_center - dark_ring * 0.2)
             score = (
-                0.35 * brown_ratio +
-                0.25 * min(brown_metrics['circularity'] * 1.5, 1.0) +
-                0.20 * pale_center +
-                0.10 * min(brown_metrics['solidity'] + 0.1, 1.0) +
-                0.10 * (1.0 - green_ratio)
+                0.30 * brown_ratio +
+                0.20 * min(brown_metrics['circularity'] * 1.5, 1.0) +
+                0.22 * pale_center +
+                0.14 * dark_ring +
+                0.10 * center_contrast +
+                0.04 * hsv_match_score +
+                0.05 * shape_bonus
             )
         elif class_name == 'leaf_miner':
+            mine_ratio = self._color_ratio(patch_hsv, (10, 40, 40), (35, 255, 220))
+            irregularity = min(1.0, max(0.0, 1.0 - min(green_metrics['solidity'], brown_metrics['solidity'])))
             score = (
-                0.30 * green_ratio +
-                0.30 * min(max(green_metrics['aspect_ratio'], 1.0) / 4.0, 1.0) +
-                0.20 * min(1.0 - green_metrics['solidity'], 1.0) +
-                0.10 * edge_density +
-                0.10 * (1.0 - brown_metrics['circularity'])
+                0.35 * mine_ratio +
+                0.25 * edge_density +
+                0.20 * irregularity +
+                0.10 * hsv_match_score +
+                0.10 * (1.0 - green_ratio)
             )
         elif class_name == 'leaf_rust':
             score = (
-                0.50 * orange_ratio +
-                0.25 * min(orange_metrics['circularity'] * 1.2, 1.0) +
+                0.40 * orange_ratio +
+                0.20 * min(orange_metrics['circularity'] * 1.2, 1.0) +
                 0.15 * edge_density +
-                0.10 * min(orange_metrics['solidity'] + 0.1, 1.0)
-            )
-        elif class_name == 'red_spider_mite':
-            score = (
-                0.30 * bronzing_ratio +
-                0.30 * min(edge_density * 4.0, 1.0) +
-                0.20 * (1.0 - green_ratio) +
-                0.10 * min(1.0 - brown_metrics['circularity'], 1.0) +
-                0.10 * min(1.0 - orange_ratio, 1.0)
+                0.10 * min(orange_metrics['solidity'] + 0.1, 1.0) +
+                0.10 * hsv_match_score +
+                0.05 * shape_bonus
             )
         else:
             score = 0.0
@@ -283,13 +295,19 @@ class DiseaseReference:
         match_ratio = self._hsv_match_ratio(patch_hsv, hsv_ranges)
         if match_ratio < 0.15:
             distance += 45
-        elif match_ratio < 0.35:
-            distance += 25
-        elif match_ratio < 0.55:
-            distance += 12
+        elif match_ratio < 0.30:
+            distance += 28
+        elif match_ratio < 0.50:
+            distance += 16
+        elif match_ratio < 0.70:
+            distance += 8
+        else:
+            distance -= 10
 
         feature_score = self._class_feature_score(patch_resized, class_name)
-        distance -= feature_score * 30
+        distance -= feature_score * 32
+        distance = max(distance, 0.0)
+        distance -= min(match_ratio, 1.0) * 6
         return max(distance, 0.0)
     
     def classify_by_color(self, image_patch):
@@ -403,116 +421,173 @@ print("=" * 60)
 MODEL_AVAILABLE = False
 model = None
 CLASS_MAP = {
-    0: "brown_eye_spot",
-    1: "leaf_miner", 
-    2: "leaf_rust",
-    3: "red_spider_mite"
+    0: "leaf_rust",
+    1: "brown_eye_spot",
+    2: "no_disease",
+    3: "leaf_miner"
 }
-# Detection settings
-# Use a slightly lower confidence threshold to recover legitimate small disease
-# patches while still filtering obviously weak predictions.
-DETECTION_CONF = 0.20
-INFERENCE_IMAGE_SIZE = 1280
+MODEL_CLASS_ALIASES = {
+    'roya': 'leaf_rust',
+    'minador': 'leaf_miner',
+    'sano': 'no_disease',
+    'coco': 'brown_eye_spot',
+    'healthy': 'no_disease',
+    'rust': 'leaf_rust',
+    'leaf_rust': 'leaf_rust',
+    'leaf_miner': 'leaf_miner',
+    'brown_eye_spot': 'brown_eye_spot',
+    'no_disease': 'no_disease',
+}
+
+
+def resolve_model_class_name(class_name, cls_id=None):
+    """Normalize a model label to the disease names used throughout the app."""
+    if class_name is None:
+        if cls_id is not None:
+            disease_keys = list(DISEASE_LABELS.keys())
+            if cls_id < len(disease_keys):
+                return disease_keys[cls_id]
+            return f'class_{cls_id}'
+        return 'unknown'
+
+    normalized = str(class_name).strip().lower()
+    normalized = re.sub(r'[^a-z0-9]+', '_', normalized).strip('_')
+
+    if normalized in MODEL_CLASS_ALIASES:
+        return MODEL_CLASS_ALIASES[normalized]
+    if normalized in DISEASE_LABELS:
+        return normalized
+    if normalized == 'healthy':
+        return 'no_disease'
+    if cls_id is not None:
+        disease_keys = list(DISEASE_LABELS.keys())
+        if cls_id < len(disease_keys):
+            return disease_keys[cls_id]
+    return normalized
+
+# Detection settings. These match the image size used when best.pt was trained.
+# A very low threshold, test-time augmentation and always-on tiling caused the
+# same lesion to be reported many times and made false positives look reliable.
+# Keep lower-confidence boxes as *possible* symptoms.  Field photos from
+# Ugandan gardens commonly contain small, shaded lesions; at 0.25 those boxes
+# were silently discarded, leaving a misleading single-lesion result.
+DETECTION_CONF = 0.10
+CONFIRMED_DETECTION_CONFIDENCE = 0.45
+# The exported ONNX model is trained at 640x640. Sending 1280x1280 causes an
+# ONNXRuntime invalid-dimension error before detection can run.
+INFERENCE_IMAGE_SIZE = 640
+LOW_RES_INFERENCE_IMAGE_SIZE = 640
+LOW_RES_SOURCE_DIMENSION = 0
 TILE_OVERLAP = 0.20
-TILE_MIN_DIMENSION = 512
-REFERENCE_DISTANCE_THRESHOLD = 75
-VALIDATION_CONF_THRESHOLD = 0.30
-MIN_DETECTION_AREA_RATIO = 0.0003
-USE_AUGMENTATION = True
+TILE_MIN_DIMENSION = 1400
+REFERENCE_DISTANCE_THRESHOLD = 85
+# Healthy leaves can trigger a single weak noise box from the model. Raise the
+# minimum confidence floor so only genuinely visible lesions survive validation.
+VALIDATION_CONF_THRESHOLD = 0.15
+MIN_DETECTION_AREA_RATIO = 0.00010
+# This model was trained without inference augmentation.  Keep predictions
+# deterministic; augmentation can introduce extra boxes for small lesions.
+USE_AUGMENTATION = False
 
 CLASS_SPECIFIC_VALIDATION = {
     'brown_eye_spot': {
-        'reference_distance': 85,
-        'min_area_ratio': 0.00025,
-        'min_confidence': 0.30,
-        'feature_threshold': 0.30,
+        'reference_distance': 110,
+        'max_reference_offset': 18,
+        'min_area_ratio': 0.00005,
+        'min_confidence': 0.14,
+        'feature_threshold': 0.15,
     },
     'leaf_miner': {
-        'reference_distance': 100,
-        'min_area_ratio': 0.00018,
-        'min_confidence': 0.24,
-        'feature_threshold': 0.24,
+        'reference_distance': 105,
+        'max_reference_offset': 16,
+        'min_area_ratio': 0.00007,
+        'min_confidence': 0.15,
+        'feature_threshold': 0.22,
     },
     'leaf_rust': {
-        'reference_distance': 115,
-        'min_area_ratio': 0.00012,
-        'min_confidence': 0.20,
-        'feature_threshold': 0.34,
+        'reference_distance': 120,
+        'max_reference_offset': 18,
+        'min_area_ratio': 0.00005,
+        'min_confidence': 0.15,
+        'feature_threshold': 0.28,
     },
-    'red_spider_mite': {
-        'reference_distance': 105,
-        'min_area_ratio': 0.00012,
-        'min_confidence': 0.22,
-        'feature_threshold': 0.25,
+    'no_disease': {
+        'reference_distance': 90,
+        'max_reference_offset': 12,
+        'min_area_ratio': 0.00004,
+        'min_confidence': 0.15,
+        'feature_threshold': 0.08,
     }
 }
 
 # Human-readable labels for display
 DISEASE_LABELS = {
-    'brown_eye_spot': 'Brown Eye Spot',
-    'leaf_miner': 'Leaf Miner',
     'leaf_rust': 'Leaf Rust',
-    'red_spider_mite': 'Red Spider Mite'
+    'brown_eye_spot': 'Brown Eye Spot',
+    'no_disease': 'No Disease',
+    'leaf_miner': 'Leaf Miner',
+    'screening_required': 'Leaf symptoms need agronomist review'
 }
 
 # Disease emojis for display
 DISEASE_EMOJIS = {
-    'brown_eye_spot': '🍂',
-    'leaf_miner': '🐛',
     'leaf_rust': '🔥',
-    'red_spider_mite': '🕷️'
+    'brown_eye_spot': '🍂',
+    'no_disease': '✅',
+    'leaf_miner': '🐛'
 }
 
 # Disease severity levels
 DISEASE_SEVERITY = {
-    'brown_eye_spot': 'moderate',
-    'leaf_miner': 'moderate',
     'leaf_rust': 'severe',
-    'red_spider_mite': 'moderate'
+    'brown_eye_spot': 'moderate',
+    'no_disease': 'healthy',
+    'leaf_miner': 'moderate'
 }
 
 def load_model():
     global model, MODEL_AVAILABLE, CLASS_MAP
-    
-    model_path = os.path.join(BASE_DIR, 'best.pt')
-    
-    if not os.path.exists(model_path):
-        print(f"❌ best.pt not found! Expected: {model_path}")
+
+    candidate_paths = [
+        os.path.join(BASE_DIR, 'best.pt'),
+        os.path.join(BASE_DIR, 'best.onnx'),
+        os.path.join(BASE_DIR, 'decafia_best.onnx'),
+        os.path.join(os.path.expanduser('~'), 'Downloads', 'decafia_best.onnx'),
+    ]
+
+    model_path = next((path for path in candidate_paths if os.path.exists(path)), None)
+
+    if model_path is None:
+        print("❌ No model file found. Looked for: best.pt, best.onnx, decafia_best.onnx")
         return False
-    
+
     try:
-        model = YOLO(model_path)
-        
-        if hasattr(model, 'names'):
-            CLASS_MAP = model.names
-        elif hasattr(model, 'model') and hasattr(model.model, 'names'):
-            CLASS_MAP = model.model.names
-        
-        # Ensure we have the disease class names
-        # If model has different class names, map them to our disease names
-        if len(CLASS_MAP) == 4:
-            # If classes are numeric indices, map them
-            for i, name in CLASS_MAP.items():
-                if name not in DISEASE_LABELS:
-                    # Try to match by index
-                    disease_names = list(DISEASE_LABELS.keys())
-                    if i < len(disease_names):
-                        CLASS_MAP[i] = disease_names[i]
-        
+        model = YOLO(model_path, task='detect')
+
+        raw_class_map = getattr(model, 'names', None)
+        if raw_class_map is None and hasattr(model, 'model') and hasattr(model.model, 'names'):
+            raw_class_map = model.model.names
+
+        if raw_class_map is not None:
+            CLASS_MAP = {
+                int(index): resolve_model_class_name(name, int(index))
+                for index, name in raw_class_map.items()
+            }
+
         MODEL_AVAILABLE = True
-        print(f"✅ Model loaded successfully! Classes: {CLASS_MAP}")
-        
-        # Test inference
+        print(f"✅ Model loaded successfully from: {model_path}")
+        print(f"✅ Model classes: {CLASS_MAP}")
+
         try:
             dummy_img = np.zeros((640, 640, 3), dtype=np.uint8)
-            test_result = model(dummy_img, conf=0.1, imgsz=INFERENCE_IMAGE_SIZE, verbose=False)
+            model(dummy_img, conf=0.1, imgsz=INFERENCE_IMAGE_SIZE, verbose=False)
             print("✅ Model inference test passed!")
         except Exception as e:
             print(f"⚠️ Model inference test failed: {e}")
             MODEL_AVAILABLE = False
-        
+
         return MODEL_AVAILABLE
-        
+
     except ImportError as e:
         print(f"❌ Error importing YOLO: {e}")
         return False
@@ -523,6 +598,72 @@ def load_model():
         return False
 
 load_model()
+
+# This classifier is a secondary screen for full-leaf photographs when YOLO
+# finds no bounding boxes. Its classes differ from best.pt and it is not used
+# to fabricate YOLO detections or disease counts.
+ARABICA_CLASSIFIER_ID = 'hf-hub:Huyt/arabica-coffee-leaf-disease-efficientnet-b0'
+ARABICA_CLASSIFIER_LABELS = {
+    'Cerscospora': 'Cercospora / brown-eye-spot-like symptoms',
+    'Leaf_rust': 'Coffee leaf rust',
+    'Miner': 'Leaf miner',
+    'Phoma': 'Phoma leaf spot',
+}
+SECONDARY_SCREENING_CONFIDENCE = 0.60
+secondary_classifier = None
+secondary_classifier_transform = None
+
+
+def screen_leaf_with_secondary_classifier(image):
+    """Return a cautious screening alert, or None when screening is unavailable.
+
+    The model works on whole-image classification rather than lesion boxes, so
+    it must never be presented as a confirmed field diagnosis.
+    """
+    global secondary_classifier, secondary_classifier_transform
+
+    if not TIMM_AVAILABLE:
+        return None
+
+    try:
+        if secondary_classifier is None:
+            secondary_classifier = timm.create_model(
+                ARABICA_CLASSIFIER_ID,
+                pretrained=True,
+            ).eval()
+            config = timm.data.resolve_data_config({}, model=secondary_classifier)
+            secondary_classifier_transform = timm.data.create_transform(**config)
+
+        if isinstance(image, Image.Image):
+            source_image = image.convert('RGB')
+        else:
+            source_image = Image.open(BytesIO(image)).convert('RGB')
+
+        with torch.no_grad():
+            probabilities = secondary_classifier(
+                secondary_classifier_transform(source_image).unsqueeze(0)
+            ).softmax(-1)[0]
+
+        predicted_index = int(probabilities.argmax())
+        confidence = float(probabilities[predicted_index])
+        labels = secondary_classifier.pretrained_cfg.get('label_names', [])
+        predicted_label = labels[predicted_index] if predicted_index < len(labels) else None
+
+        if predicted_label not in ARABICA_CLASSIFIER_LABELS or confidence < SECONDARY_SCREENING_CONFIDENCE:
+            return None
+
+        return {
+            'label': ARABICA_CLASSIFIER_LABELS[predicted_label],
+            'raw_label': predicted_label,
+            'confidence': round(confidence * 100, 2),
+            'model': 'Arabica leaf symptom screening model',
+            'is_screening_only': True,
+        }
+    except Exception as error:
+        # This extra safeguard must not make the primary predictor fail if its
+        # optional cached classifier is unavailable.
+        print(f"Secondary screening unavailable: {error}")
+        return None
 
 def _box_iou(first_box, second_box):
     """Return IoU for two [x1, y1, x2, y2] boxes."""
@@ -536,8 +677,10 @@ def _box_iou(first_box, second_box):
     union = first_area + second_area - intersection
     return intersection / union if union else 0
 
-def _deduplicate_detections(detections, iou_threshold=0.45):
-    """Remove same-class duplicates introduced by overlapping inference tiles."""
+def _deduplicate_detections(detections, iou_threshold=0.90):
+    """Remove same-class duplicates introduced by overlapping inference tiles.
+    Use a high IoU threshold so nearby but distinct spots are not merged.
+    """
     kept = []
     for detection in sorted(detections, key=lambda item: item['confidence'], reverse=True):
         duplicate = any(
@@ -571,34 +714,51 @@ def is_coffee_leaf_image(image):
 
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     green_mask = cv2.inRange(hsv, np.array([25, 40, 40]), np.array([90, 255, 255]))
+    yellow_mask = cv2.inRange(hsv, np.array([10, 40, 40]), np.array([40, 255, 255]))
+    brown_mask = cv2.inRange(hsv, np.array([0, 30, 20]), np.array([35, 255, 180]))
+
     green_mask = cv2.morphologyEx(
         green_mask,
         cv2.MORPH_CLOSE,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
     )
+    yellow_mask = cv2.morphologyEx(
+        yellow_mask,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    )
+    brown_mask = cv2.morphologyEx(
+        brown_mask,
+        cv2.MORPH_CLOSE,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    )
 
+    leaf_mask = cv2.bitwise_or(green_mask, cv2.bitwise_or(yellow_mask, brown_mask))
+    leaf_ratio = np.count_nonzero(leaf_mask) / float(img.shape[0] * img.shape[1])
     green_ratio = np.count_nonzero(green_mask) / float(img.shape[0] * img.shape[1])
-    if green_ratio < 0.08:
+
+    if green_ratio < 0.02 and leaf_ratio < 0.08:
+        return False
+    if leaf_ratio < 0.05:
         return False
 
-    b, g, r = cv2.split(img)
-    avg_green = np.mean(g)
-    avg_red_blue = (np.mean(r) + np.mean(b)) / 2.0 + 1e-6
-    if avg_green / avg_red_blue < 1.05:
-        return False
-
-    contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(leaf_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return False
 
     largest_area = max(cv2.contourArea(c) for c in contours)
-    return largest_area / float(img.shape[0] * img.shape[1]) >= 0.01
+    return largest_area / float(img.shape[0] * img.shape[1]) >= 0.015
 
 # =========================
 # DISEASE DETECTION FUNCTION - UPDATED
 # =========================
 def detect_diseases(image, conf=DETECTION_CONF):
-    """Run best.pt directly on the uploaded image without altering its pixels."""
+    """Run best.pt on the original upload and return one count per model box."""
+    # Keep this field present in every response, including early failures.
+    # Callers use it to distinguish an optional whole-leaf screening alert from
+    # a YOLO lesion detection, and a missing key previously caused the upload
+    # route to fail while trying to display an otherwise useful error.
+    secondary_screening = None
     if not MODEL_AVAILABLE or model is None:
         return {
             'success': False,
@@ -606,15 +766,16 @@ def detect_diseases(image, conf=DETECTION_CONF):
             'detections': [],
             'total_detections': 0,
             'class_counts': {
-                'brown_eye_spot': 0,
-                'leaf_miner': 0,
                 'leaf_rust': 0,
-                'red_spider_mite': 0
+                'brown_eye_spot': 0,
+                'no_disease': 0,
+                'leaf_miner': 0
             },
             'has_disease': False,
             'primary_disease': 'no_disease',
             'avg_confidence': 0,
             'reference_validated': False,
+            'secondary_screening': secondary_screening,
             'severity': 'healthy',
             'recommendation': 'No diseases detected. Keep monitoring your coffee plants regularly.'
         }
@@ -640,14 +801,15 @@ def detect_diseases(image, conf=DETECTION_CONF):
                 'detections': [],
                 'total_detections': 0,
                 'class_counts': {
-                    'brown_eye_spot': 0,
-                    'leaf_miner': 0,
                     'leaf_rust': 0,
-                    'red_spider_mite': 0
+                    'brown_eye_spot': 0,
+                    'no_disease': 0,
+                    'leaf_miner': 0
                 },
                 'has_disease': False,
                 'primary_disease': 'no_disease',
                 'avg_confidence': 0,
+                'secondary_screening': secondary_screening,
                 'severity': 'healthy',
                 'recommendation': 'No diseases detected. Keep monitoring your coffee plants regularly.'
             }
@@ -659,21 +821,27 @@ def detect_diseases(image, conf=DETECTION_CONF):
                 'detections': [],
                 'total_detections': 0,
                 'class_counts': {
-                    'brown_eye_spot': 0,
-                    'leaf_miner': 0,
                     'leaf_rust': 0,
-                    'red_spider_mite': 0
+                    'brown_eye_spot': 0,
+                    'no_disease': 0,
+                    'leaf_miner': 0
                 },
                 'has_disease': False,
                 'primary_disease': 'no_disease',
                 'avg_confidence': 0,
+                'secondary_screening': secondary_screening,
                 'severity': 'healthy',
                 'recommendation': 'Upload a clear coffee leaf image for disease detection.'
             }
         
         orig_w, orig_h = source_image.size
-        # For detailed photos, use overlapping tiles so small lesions occupy
-        # more pixels. Same-class boxes in the overlap are merged afterwards.
+        # Keep the input at the exported model size. The YOLO ONNX export used in
+        # this project is fixed to 640x640; higher sizes trigger invalid ONNX
+        # dimensions even when the image content is otherwise valid.
+        inference_image_size = INFERENCE_IMAGE_SIZE
+        # Most uploads should be evaluated as one photo. Tiling is reserved for
+        # exceptionally large images, where a small lesion might otherwise be
+        # lost during resizing. Same-class overlap boxes are merged later.
         if min(orig_w, orig_h) >= TILE_MIN_DIMENSION:
             tile_width = int(orig_w * (1 - TILE_OVERLAP * 2))
             tile_height = int(orig_h * (1 - TILE_OVERLAP * 2))
@@ -693,7 +861,14 @@ def detect_diseases(image, conf=DETECTION_CONF):
 
         all_detections = []
         for tile, x_offset, y_offset in inference_tiles:
-            results = model(tile, conf=conf, iou=0.45, imgsz=INFERENCE_IMAGE_SIZE, verbose=False, augment=USE_AUGMENTATION)
+            results = model(
+                tile,
+                conf=conf,
+                iou=0.45,
+                imgsz=inference_image_size,
+                verbose=False,
+                augment=USE_AUGMENTATION,
+            )
             if not results:
                 continue
             result = results[0]
@@ -701,17 +876,13 @@ def detect_diseases(image, conf=DETECTION_CONF):
                 for box in result.boxes:
                     cls_id = int(box.cls)
                     confidence = float(box.conf)
-                    
-                    # Get class name from model or use our mapping
-                    class_name = CLASS_MAP.get(cls_id, f"class_{cls_id}")
-                    
-                    # Ensure it matches our disease names
-                    if class_name not in DISEASE_LABELS:
-                        # Try to find matching disease by index
-                        disease_keys = list(DISEASE_LABELS.keys())
-                        if cls_id < len(disease_keys):
-                            class_name = disease_keys[cls_id]
-                    
+
+                    raw_class_name = CLASS_MAP.get(cls_id, f"class_{cls_id}")
+                    class_name = resolve_model_class_name(raw_class_name, cls_id)
+
+                    if class_name == 'no_disease':
+                        continue
+
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     
                     # Ultralytics returns boxes in the original image's pixel
@@ -733,8 +904,7 @@ def detect_diseases(image, conf=DETECTION_CONF):
         
         # Remove overlapping duplicate detections from tiled inference.
         all_detections = _deduplicate_detections(all_detections, iou_threshold=0.45)
-
-        # Validate each detection against the disease color reference and filter tiny/low-confidence noise.
+        # Validate each detection minimally, but trust the model first.
         image_bgr = cv2.cvtColor(np.array(source_image), cv2.COLOR_RGB2BGR)
         validated_detections = []
         for det in all_detections:
@@ -755,37 +925,77 @@ def detect_diseases(image, conf=DETECTION_CONF):
             if patch.size == 0:
                 continue
 
+            # Brown-eye lesions often show a darker ring with a lighter center and
+            # more compact circular lesions than rust and miner. Prefer Brown Eye Spot
+            # when the patch matches that combination, even if the raw model is close.
+            feature_scores = {
+                name: disease_reference._class_feature_score(patch, name)
+                for name in ['brown_eye_spot', 'leaf_rust', 'leaf_miner']
+            }
+            brown_score = feature_scores.get('brown_eye_spot', 0.0)
+            rust_score = feature_scores.get('leaf_rust', 0.0)
+            miner_score = feature_scores.get('leaf_miner', 0.0)
+            if (
+                brown_score >= 0.32 and
+                brown_score >= max(rust_score, miner_score) * 0.98
+            ):
+                det['class_name'] = 'brown_eye_spot'
+                det['class_id'] = 1
+                det['display_name'] = DISEASE_LABELS.get('brown_eye_spot', 'Brown Eye Spot')
+                det['emoji'] = DISEASE_EMOJIS.get('brown_eye_spot', '🍂')
+
             ref_class, ref_distance = disease_reference.classify_by_color(patch)
             ref_threshold = class_settings.get('reference_distance', REFERENCE_DISTANCE_THRESHOLD)
-            det['reference_validated'] = (ref_class == det['class_name'] and ref_distance < ref_threshold)
+            # OpenCV/NumPy comparisons can produce numpy.bool_, which Flask
+            # cannot serialize in a JSON response. Convert at the boundary.
+            det['reference_validated'] = bool(
+                ref_class == det['class_name'] and ref_distance < ref_threshold
+            )
             det['reference_label'] = ref_class
             det['reference_distance'] = float(ref_distance)
             det['feature_score'] = disease_reference._class_feature_score(patch, det['class_name'])
 
-            confidence_threshold = class_settings.get('min_confidence', VALIDATION_CONF_THRESHOLD)
-            feature_threshold = class_settings.get('feature_threshold', 0.0)
-            if not det['reference_validated'] and (det['confidence'] < confidence_threshold and det['feature_score'] < feature_threshold):
+            # Ignore weak model noise. Healthy leaves can trigger a single low-score box,
+            # but those are not valid disease instances and should not be counted.
+            model_confidence_threshold = max(
+                VALIDATION_CONF_THRESHOLD,
+                class_settings.get('min_confidence', VALIDATION_CONF_THRESHOLD),
+                conf * 0.85,
+            )
+            if det['confidence'] < model_confidence_threshold:
                 continue
 
             validated_detections.append(det)
 
         all_detections = validated_detections
 
-        # Count detections by disease type
+        # Count actual model detections. Do not infer extra lesions from colour
+        # contours inside a box: doing so previously produced counts in the
+        # hundreds from a handful of YOLO detections.
         class_counts = {
-            'brown_eye_spot': 0,
-            'leaf_miner': 0,
             'leaf_rust': 0,
-            'red_spider_mite': 0
+            'brown_eye_spot': 0,
+            'no_disease': 0,
+            'leaf_miner': 0
         }
         
         for det in all_detections:
             class_name = det['class_name'].lower()
+            spot_count = 1
             if class_name in class_counts:
-                class_counts[class_name] += 1
+                class_counts[class_name] += spot_count
+            det['spot_count'] = spot_count
         
         total_detections = len(all_detections)
         
+        # A box is a candidate lesion, not automatically a confirmed field
+        # diagnosis.  Keep candidates for the farmer to see, but flag the
+        # result for review until the model is confident enough.
+        review_required = any(
+            det['confidence'] < CONFIRMED_DETECTION_CONFIDENCE
+            for det in all_detections
+        )
+
         # Determine primary disease
         if total_detections > 0:
             # Find the disease with the highest count
@@ -799,29 +1009,63 @@ def detect_diseases(image, conf=DETECTION_CONF):
         else:
             primary_disease = 'no_disease'
         
-        # Determine severity based on total detections
+        # A whole-leaf classifier is only a safety net when the lesion detector
+        # returns no boxes. It surfaces an alert without converting the alert
+        # into a fabricated YOLO box or an exact disease count.
         if total_detections == 0:
+            secondary_screening = screen_leaf_with_secondary_classifier(source_image)
+
+        # Determine severity based on actual YOLO detections or a cautious
+        # secondary screening alert.
+        if total_detections > 0 and review_required:
+            severity = 'moderate'
+            recommendation = (
+                'The model found possible leaf-symptom areas, but at least one '
+                'classification is below the confirmation threshold. Inspect both '
+                'leaf surfaces and consult an extension officer or agronomist before treatment.'
+            )
+        elif total_detections == 0 and secondary_screening:
+            severity = 'moderate'
+            recommendation = (
+                f"A secondary visual screen flagged possible {secondary_screening['label']} "
+                f"({secondary_screening['confidence']}% confidence). The primary detector did not "
+                "recognise a matching lesion pattern, so inspect the plant and seek an agronomist's "
+                "confirmation before treatment."
+            )
+        elif total_detections == 0:
             severity = 'healthy'
-            recommendation = 'The model found no matching disease pattern. This is not a guarantee that the leaf is healthy; inspect visible symptoms or consult an agronomist.'
+            recommendation = 'The model found no matching disease or pest pattern. This is not a guarantee that the leaf is healthy; inspect visible symptoms or consult an agronomist.'
         elif total_detections < 3:
             severity = 'low'
-            recommendation = '🟢 Low disease presence detected. Monitor closely and consider preventive measures.'
+            recommendation = '🟢 Low issue presence detected. Monitor closely and consider preventive measures.'
         elif total_detections < 8:
             severity = 'moderate'
-            recommendation = '🟡 Moderate disease presence. Take action to control the spread.'
+            recommendation = '🟡 Moderate issue presence. Take action to control the spread.'
         else:
             severity = 'severe'
-            recommendation = '🔴 High disease presence detected. Immediate action required to protect your crop.'
+            recommendation = '🔴 High issue presence detected. Immediate action required to protect your crop.'
         
         # Get specific recommendation for the primary disease
-        if primary_disease != 'no_disease':
+        if primary_disease != 'no_disease' and not review_required:
             specific_rec = disease_reference.get_recommendation(primary_disease)
             if specific_rec:
                 recommendation = f"**{DISEASE_LABELS.get(primary_disease, primary_disease)} detected.** {specific_rec}"
         
         avg_confidence = sum(d['confidence'] for d in all_detections) / max(len(all_detections), 1)
         reference_validated = any(d.get('reference_validated', False) for d in all_detections)
-        
+
+        # Build debug details for each detection to help troubleshooting
+        debug_detections = []
+        for d in all_detections:
+            debug_detections.append({
+                'class_name': d.get('class_name'),
+                'confidence': float(d.get('confidence', 0.0)),
+                'bbox': [int(x) for x in d.get('bbox', [])],
+                'spot_count': int(d.get('spot_count', 1)),
+                'feature_score': float(d.get('feature_score', 0.0)),
+                'reference_validated': bool(d.get('reference_validated', False)),
+            })
+
         return {
             'success': True,
             'total_detections': total_detections,
@@ -830,15 +1074,22 @@ def detect_diseases(image, conf=DETECTION_CONF):
             'display_primary': DISEASE_LABELS.get(primary_disease, primary_disease),
             'avg_confidence': avg_confidence * 100,
             'detections': all_detections,
+            'debug_detections': debug_detections,
             'has_disease': total_detections > 0,
+            'review_required': review_required,
+            'confirmed_detections': sum(
+                det['confidence'] >= CONFIRMED_DETECTION_CONFIDENCE
+                for det in all_detections
+            ),
+            'secondary_screening': secondary_screening,
             'reference_validated': reference_validated,
             'severity': severity,
             'recommendation': recommendation,
             'class_labels': {
-                'brown_eye_spot': 'Brown Eye Spot',
-                'leaf_miner': 'Leaf Miner',
                 'leaf_rust': 'Leaf Rust',
-                'red_spider_mite': 'Red Spider Mite'
+                'brown_eye_spot': 'Brown Eye Spot',
+                'no_disease': 'No Disease',
+                'leaf_miner': 'Leaf Miner'
             },
             'emojis': DISEASE_EMOJIS
         }
@@ -853,14 +1104,15 @@ def detect_diseases(image, conf=DETECTION_CONF):
             'detections': [],
             'total_detections': 0,
             'class_counts': {
-                'brown_eye_spot': 0,
-                'leaf_miner': 0,
                 'leaf_rust': 0,
-                'red_spider_mite': 0
+                'brown_eye_spot': 0,
+                'no_disease': 0,
+                'leaf_miner': 0
             },
             'has_disease': False,
             'primary_disease': 'no_disease',
             'avg_confidence': 0,
+            'secondary_screening': secondary_screening,
             'severity': 'healthy',
             'recommendation': 'No diseases detected. Keep monitoring your coffee plants regularly.'
         }
@@ -1121,11 +1373,10 @@ def get_disease_stats(email):
             total = len(rows)
             
             # Count by disease type
-            brown_eye = sum(1 for r in rows if r[0] and r[0].lower() == "brown_eye_spot")
-            leaf_miner = sum(1 for r in rows if r[0] and r[0].lower() == "leaf_miner")
             leaf_rust = sum(1 for r in rows if r[0] and r[0].lower() == "leaf_rust")
-            spider_mite = sum(1 for r in rows if r[0] and r[0].lower() == "red_spider_mite")
+            brown_eye = sum(1 for r in rows if r[0] and r[0].lower() == "brown_eye_spot")
             no_disease = sum(1 for r in rows if r[0] and r[0].lower() == "no_disease")
+            leaf_miner = sum(1 for r in rows if r[0] and r[0].lower() == "leaf_miner")
 
             total_detections = sum(r[3] or 0 for r in rows)
             
@@ -1140,11 +1391,10 @@ def get_disease_stats(email):
 
             return {
                 "total": total,
-                "brown_eye_spot": brown_eye,
-                "leaf_miner": leaf_miner,
                 "leaf_rust": leaf_rust,
-                "red_spider_mite": spider_mite,
+                "brown_eye_spot": brown_eye,
                 "no_disease": no_disease,
+                "leaf_miner": leaf_miner,
                 "accuracy": accuracy,
                 "total_detections": total_detections,
                 "healthy": healthy,
@@ -1157,11 +1407,10 @@ def get_disease_stats(email):
         print(f"Error getting stats: {e}")
         return {
             "total": 0,
-            "brown_eye_spot": 0,
-            "leaf_miner": 0,
             "leaf_rust": 0,
-            "red_spider_mite": 0,
+            "brown_eye_spot": 0,
             "no_disease": 0,
+            "leaf_miner": 0,
             "accuracy": 0,
             "total_detections": 0,
             "healthy": 0,
@@ -1396,7 +1645,6 @@ def dashboard():
             brown_eye_spot=stats.get('brown_eye_spot', 0),
             leaf_miner=stats.get('leaf_miner', 0),
             leaf_rust=stats.get('leaf_rust', 0),
-            red_spider_mite=stats.get('red_spider_mite', 0),
             no_disease=stats.get('no_disease', 0),
             total=stats.get('total', 0),
             accuracy=stats.get('accuracy', 0),
@@ -1436,11 +1684,10 @@ def dashboard_stats():
             health_status = 'Healthy'
         
         return jsonify({
-            "brown_eye_spot": stats['brown_eye_spot'],
-            "leaf_miner": stats['leaf_miner'],
             "leaf_rust": stats['leaf_rust'],
-            "red_spider_mite": stats['red_spider_mite'],
+            "brown_eye_spot": stats['brown_eye_spot'],
             "no_disease": stats['no_disease'],
+            "leaf_miner": stats['leaf_miner'],
             "total": stats['total'],
             "accuracy": stats['accuracy'],
             "total_detections": stats.get('total_detections', 0),
@@ -1500,6 +1747,7 @@ def predict():
         
         detection_result = detect_diseases(image)
 
+        secondary_screening = detection_result.get('secondary_screening')
         if detection_result['success'] and detection_result['has_disease']:
             result = detection_result['primary_disease']
             confidence = detection_result['avg_confidence']
@@ -1509,11 +1757,23 @@ def predict():
             ref_validated = detection_result.get('reference_validated', False)
             severity = detection_result.get('severity', 'healthy')
             recommendation = detection_result.get('recommendation', '')
+        elif detection_result['success'] and secondary_screening:
+            # Preserve the distinction between a model box and a whole-image
+            # screening signal. The count stays zero because no YOLO lesion was
+            # located, while the UI clearly explains that review is needed.
+            result = 'screening_required'
+            confidence = secondary_screening['confidence']
+            total_detections = 0
+            class_counts = {"leaf_rust": 0, "brown_eye_spot": 0, "no_disease": 0, "leaf_miner": 0}
+            has_disease = True
+            ref_validated = False
+            severity = detection_result.get('severity', 'moderate')
+            recommendation = detection_result.get('recommendation', '')
         else:
             result = "no_disease"
             confidence = 0
             total_detections = 0
-            class_counts = {"brown_eye_spot": 0, "leaf_miner": 0, "leaf_rust": 0, "red_spider_mite": 0}
+            class_counts = {"leaf_rust": 0, "brown_eye_spot": 0, "no_disease": 0, "leaf_miner": 0}
             has_disease = False
             ref_validated = False
             severity = 'healthy'
@@ -1611,19 +1871,29 @@ def validate_image():
             }), 400
         
         detection_result = detect_diseases(img)
+        secondary_screening = detection_result.get('secondary_screening')
         
-        if detection_result['success'] and detection_result['has_disease']:
+        if detection_result['success'] and (detection_result['has_disease'] or secondary_screening):
             return jsonify({
                 "valid": True,
                 "disease_count": detection_result['total_detections'],
-                "class_counts": detection_result['class_counts'],
+                "class_counts": detection_result.get('class_counts', {}),
                 "severity": detection_result.get('severity', 'healthy'),
-                "confidence": detection_result['avg_confidence'],
+                "confidence": (
+                    detection_result['avg_confidence']
+                    if detection_result['has_disease']
+                    else secondary_screening['confidence']
+                ),
                 "reference_validated": detection_result.get('reference_validated', False),
-                "message": f"✅ {detection_result['total_detections']} disease instances detected!",
-                "has_disease": True,
+                "message": (
+                    f"✅ {detection_result['total_detections']} disease instances detected!"
+                    if detection_result['has_disease']
+                    else "Visual symptoms need review before treatment."
+                ),
+                "has_disease": bool(detection_result['has_disease'] or secondary_screening),
                 "primary_disease": detection_result.get('primary_disease', 'no_disease'),
-                "recommendation": detection_result.get('recommendation', '')
+                "recommendation": detection_result.get('recommendation', ''),
+                "secondary_screening": secondary_screening,
             })
         else:
             return jsonify({
@@ -1677,6 +1947,7 @@ def validate_and_predict():
             }), 400
         
         detection_result = detect_diseases(image)
+        secondary_screening = detection_result.get('secondary_screening')
         
         if detection_result['success'] and detection_result['has_disease']:
             result = detection_result['primary_disease']
@@ -1687,11 +1958,20 @@ def validate_and_predict():
             ref_validated = detection_result.get('reference_validated', False)
             severity = detection_result.get('severity', 'healthy')
             recommendation = detection_result.get('recommendation', '')
+        elif detection_result['success'] and secondary_screening:
+            result = 'screening_required'
+            confidence = secondary_screening['confidence']
+            total_detections = 0
+            class_counts = {"leaf_rust": 0, "brown_eye_spot": 0, "no_disease": 0, "leaf_miner": 0}
+            has_disease = True
+            ref_validated = False
+            severity = detection_result.get('severity', 'moderate')
+            recommendation = detection_result.get('recommendation', '')
         else:
             result = "no_disease"
             confidence = 0
             total_detections = 0
-            class_counts = {"brown_eye_spot": 0, "leaf_miner": 0, "leaf_rust": 0, "red_spider_mite": 0}
+            class_counts = {"leaf_rust": 0, "brown_eye_spot": 0, "no_disease": 0, "leaf_miner": 0}
             has_disease = False
             ref_validated = False
             severity = 'healthy'
@@ -1727,6 +2007,11 @@ def validate_and_predict():
             "filename": filename,
             "disease_count": total_detections,
             "class_counts": class_counts,
+            "detections": detection_result.get('detections', []),
+            "debug_detections": detection_result.get('debug_detections', []),
+            "secondary_screening": secondary_screening,
+            "review_required": detection_result.get('review_required', False),
+            "confirmed_detections": detection_result.get('confirmed_detections', 0),
             "has_disease": has_disease,
             "detection_type": "leaf",
             "model_used": MODEL_AVAILABLE,
@@ -1737,10 +2022,10 @@ def validate_and_predict():
             "emojis": DISEASE_EMOJIS,
             "severity_emoji": '🟢' if severity == 'healthy' else '🟡' if severity == 'low' else '🟠' if severity == 'moderate' else '🔴',
             "message": (
-                f"Detected {total_detections} disease instances. We see this because the count is still 28."
-                if has_disease and total_detections == 28
-                else f"Detected {total_detections} disease instances"
-                if has_disease
+                f"Detected {total_detections} disease instance(s)"
+                if total_detections > 0
+                else "Visual screening found symptoms that need review"
+                if secondary_screening
                 else "No matching disease pattern was detected by the model"
             )
         }
@@ -1782,15 +2067,29 @@ def predict_multiple():
                 continue
 
             detection_result = detect_diseases(image)
+            secondary_screening = detection_result.get('secondary_screening')
 
             if detection_result['success'] and detection_result['has_disease']:
                 result = detection_result['primary_disease']
                 confidence = detection_result['avg_confidence']
                 total_detections = detection_result['total_detections']
+                class_counts = detection_result['class_counts']
+                severity = detection_result.get('severity', 'healthy')
+                recommendation = detection_result.get('recommendation', '')
+            elif detection_result['success'] and secondary_screening:
+                result = 'screening_required'
+                confidence = secondary_screening['confidence']
+                total_detections = 0
+                class_counts = {"leaf_rust": 0, "brown_eye_spot": 0, "no_disease": 0, "leaf_miner": 0}
+                severity = detection_result.get('severity', 'moderate')
+                recommendation = detection_result.get('recommendation', '')
             else:
                 result = "no_disease"
                 confidence = 0
                 total_detections = 0
+                class_counts = {"leaf_rust": 0, "brown_eye_spot": 0, "no_disease": 0, "leaf_miner": 0}
+                severity = 'healthy'
+                recommendation = 'No matching disease pattern was detected by the model.'
 
             confidence = max(0, min(100, confidence))
             confidence_score = round(confidence / 100, 2)
@@ -1801,16 +2100,24 @@ def predict_multiple():
             with get_db() as conn:
                 c = conn.cursor()
                 c.execute("""
-                    INSERT INTO predictions (email, filename, result, confidence, timestamp, image_data, total_detections)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (session['email'], filename, result, confidence_score, datetime.now().isoformat(), image_data, total_detections))
+                    INSERT INTO predictions (email, filename, result, confidence, timestamp, image_data,
+                                             class_counts, total_detections, severity, recommendation)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (session['email'], filename, result, confidence_score, datetime.now().isoformat(), image_data,
+                      json.dumps(class_counts), total_detections, severity, recommendation))
 
             results.append({
                 "success": True,
                 "result": DISEASE_LABELS.get(result, result),
                 "confidence": round(confidence, 2),
                 "filename": filename,
-                "disease_count": total_detections
+                "disease_count": total_detections,
+                "class_counts": class_counts,
+                "severity": severity,
+                "recommendation": recommendation,
+                "secondary_screening": secondary_screening,
+                "review_required": detection_result.get('review_required', False),
+                "confirmed_detections": detection_result.get('confirmed_detections', 0),
             })
         except Exception as e:
             print(f"Prediction error for {filename}: {e}")
@@ -1910,11 +2217,10 @@ def generate_report():
         report_data = {
             "generated": datetime.now().isoformat(),
             "total_predictions": stats['total'],
-            "brown_eye_spot": stats['brown_eye_spot'],
-            "leaf_miner": stats['leaf_miner'],
             "leaf_rust": stats['leaf_rust'],
-            "red_spider_mite": stats['red_spider_mite'],
+            "brown_eye_spot": stats['brown_eye_spot'],
             "no_disease": stats.get('no_disease', 0),
+            "leaf_miner": stats['leaf_miner'],
             "avg_confidence": stats['accuracy'],
             "total_detections": stats.get('total_detections', 0),
             "healthy": stats.get('healthy', 0),
@@ -1995,11 +2301,10 @@ def reports_data():
                 "id": row[0],
                 "name": row[1],
                 "created_at": row[3],
-                "brown_eye_spot": data.get("brown_eye_spot", 0),
-                "leaf_miner": data.get("leaf_miner", 0),
                 "leaf_rust": data.get("leaf_rust", 0),
-                "red_spider_mite": data.get("red_spider_mite", 0),
+                "brown_eye_spot": data.get("brown_eye_spot", 0),
                 "no_disease": data.get("no_disease", 0),
+                "leaf_miner": data.get("leaf_miner", 0),
                 "total": data.get("total_predictions", 0),
                 "total_detections": data.get("total_detections", 0),
                 "healthy": data.get("healthy", 0),
@@ -2245,40 +2550,40 @@ def reference_status():
 
 @app.route('/api/disease_info')
 def disease_info():
-    """Get information about all coffee leaf diseases"""
+    """Get information about all coffee leaf diseases and pests"""
     return jsonify({
         "diseases": [
+            {
+                "key": "leaf_rust",
+                "name": "Leaf Rust",
+                "emoji": "🔥",
+                "description": "Pale yellow spots that develop orange/rust-coloured pustules, often on the lower leaf surface.",
+                "severity": "severe",
+                "treatment": disease_reference.get_recommendation("leaf_rust")
+            },
             {
                 "key": "brown_eye_spot",
                 "name": "Brown Eye Spot",
                 "emoji": "🍂",
-                "description": "Brown circular spots with yellow halos on leaves",
+                "description": "Brown leaf spots that enlarge and develop reddish-brown margins; repeated lesions can make leaves appear burnt.",
                 "severity": "moderate",
                 "treatment": disease_reference.get_recommendation("brown_eye_spot")
+            },
+            {
+                "key": "no_disease",
+                "name": "No Disease",
+                "emoji": "✅",
+                "description": "No disease symptoms detected in this image.",
+                "severity": "healthy",
+                "treatment": "Keep monitoring the crop and continue normal field hygiene."
             },
             {
                 "key": "leaf_miner",
                 "name": "Leaf Miner",
                 "emoji": "🐛",
-                "description": "Serpentine mines/trails on leaf surface",
+                "description": "Irregular brown or necrotic mines caused by larvae feeding between the upper and lower leaf surfaces.",
                 "severity": "moderate",
                 "treatment": disease_reference.get_recommendation("leaf_miner")
-            },
-            {
-                "key": "leaf_rust",
-                "name": "Leaf Rust",
-                "emoji": "🔥",
-                "description": "Yellow-orange powdery spots on leaf undersides",
-                "severity": "severe",
-                "treatment": disease_reference.get_recommendation("leaf_rust")
-            },
-            {
-                "key": "red_spider_mite",
-                "name": "Red Spider Mite",
-                "emoji": "🕷️",
-                "description": "Fine webbing and stippling on leaves, reddish spots",
-                "severity": "moderate",
-                "treatment": disease_reference.get_recommendation("red_spider_mite")
             }
         ],
         "severity_levels": {
@@ -2330,7 +2635,7 @@ if __name__ == "__main__":
         print(f"🎯 Detection confidence threshold: {DETECTION_CONF}")
         print("🔄 Reference validation: Enabled")
         print("📝 Detection: Coffee Leaf Disease Detection")
-        print("🦠 Diseases: Brown Eye Spot, Leaf Miner, Leaf Rust, Red Spider Mite")
+        print("🦠 Diseases: Leaf Rust, Brown Eye Spot, No Disease, Leaf Miner")
     else:
         print("💡 Please ensure best.pt is in the project directory")
         print("📁 Expected path:", os.path.join(BASE_DIR, 'best.pt'))

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: coffee-guard-ai
+    runtime: docker
+    healthCheckPath: /
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "true"

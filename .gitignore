@@ -42,10 +42,13 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 
-# Model files (optional - comment out if you want to commit models)
+# Model files (do not commit large AI artifacts to GitHub)
 *.pth
 *.pkl
 *.h5
+best.pt
+*.pt
+*.onnx
 
 # Uploads
 static/uploads/*
@@ -59,3 +62,5 @@ static/uploads/*
 .env
 .env.local
 *.pid
+# Downloaded secondary-model cache (kept locally for offline screening)
+.model_cache/

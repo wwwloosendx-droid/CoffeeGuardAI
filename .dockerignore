@@ -3,6 +3,7 @@
 .dockerignore
 README.md
 *.log
+.env
 venv/
 .vscode/
 .idea/

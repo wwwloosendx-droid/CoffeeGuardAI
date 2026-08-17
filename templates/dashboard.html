@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>CoffeeGuard · Smart Coffee Plant Disease Detection</title>
+    <title>CoffeeGuard · Smart Coffee Plant Disease and Pest Detection</title>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -1838,7 +1838,7 @@
     <h2><i class="fas fa-mug-saucer"></i> <span>CoffeeGuard</span></h2>
     <nav>
         <a class="active" onclick="showPage('dashboard')"><i class="fas fa-gauge-high"></i> <span>Dashboard</span></a>
-        <a onclick="showPage('predictions')"><i class="fas fa-leaf"></i> <span>Disease Detection</span></a>
+        <a onclick="showPage('predictions')"><i class="fas fa-leaf"></i> <span>Disease & Pest Detection</span></a>
         <a onclick="showPage('camera')"><i class="fas fa-camera"></i> <span>Camera</span></a>
         <a onclick="showPage('gallery')"><i class="fas fa-images"></i> <span>Gallery</span></a>
         <a onclick="showPage('reports')"><i class="fas fa-file-alt"></i> <span>Reports</span></a>
@@ -1852,7 +1852,7 @@
     </nav>
     <div class="sidebar-footer">
         <div class="tip-title"><i class="fas fa-shield-alt"></i> Protect your coffee</div>
-        <div class="tip-text">Early disease detection saves your crop.</div>
+        <div class="tip-text">Early disease and pest detection saves your crop.</div>
     </div>
 </div>
 
@@ -1888,7 +1888,7 @@
                 </div>
                 <div class="name-section">
                     <h1><i class="fas fa-hand-peace"></i> Welcome back, <span id="userNameDisplay">Coffee Farmer</span></h1>
-                    <p><i class="fas fa-shield-alt" style="color:#8b1a1a;"></i> Monitor your coffee leaf health and detect diseases early.</p>
+                    <p><i class="fas fa-shield-alt" style="color:#8b1a1a;"></i> Monitor your coffee leaf health and detect diseases and pests early.</p>
                 </div>
             </div>
             <div class="topbar-actions">
@@ -1919,12 +1919,6 @@
                 <div class="metric" id="leafRustCount">0</div>
                 <span class="trend neutral"><i class="fas fa-minus"></i> 0%</span>
             </div>
-            <div class="card card-spider-mite">
-                <div class="card-icon"><i class="fas fa-spider"></i></div>
-                <h3>Red Spider Mite</h3>
-                <div class="metric" id="spiderMiteCount">0</div>
-                <span class="trend neutral"><i class="fas fa-minus"></i> 0%</span>
-            </div>
             <div class="card card-health-status">
                 <div class="card-icon"><i class="fas fa-heartbeat"></i></div>
                 <h3>Crop Health</h3>
@@ -1937,13 +1931,13 @@
         <div class="section" style="margin-bottom:32px;">
             <h3><i class="fas fa-chart-simple"></i> Disease Severity Assessment <span style="font-size:0.65rem; font-weight:400; color:#7a5a4a; background:#f5ede8; padding:4px 12px; border-radius:30px; margin-left:8px;">CoffeeGuard AI</span></h3>
             <div class="mode-toggle">
-                <span class="mode-toggle-label"><i class="fas fa-clipboard-check"></i> Disease Counts:</span>
+                <span class="mode-toggle-label"><i class="fas fa-clipboard-check"></i> Issue Counts:</span>
                 <div class="mode-toggle-group">
                     <button id="severeToggle" class="mode-btn active" onclick="setSeverityMode('severe')"><i class="fas fa-exclamation-triangle"></i> High Risk</button>
                     <button id="moderateToggle" class="mode-btn" onclick="setSeverityMode('moderate')"><i class="fas fa-triangle-exclamation"></i> Moderate</button>
                     <button id="lowToggle" class="mode-btn" onclick="setSeverityMode('low')"><i class="fas fa-check-circle"></i> Low Risk</button>
                 </div>
-                <span class="mode-note" id="severityModeNote">💡 Based on live prediction counts and recent disease trends</span>
+                <span class="mode-note" id="severityModeNote">💡 Based on live prediction counts and recent disease and pest trends</span>
             </div>
             <p style="color:#7a5a4a; font-size:0.9rem; margin-bottom:12px;">
                 <i class="fas fa-info-circle" style="color:#8b1a1a;"></i> Enter disease counts to assess crop health and get treatment recommendations.
@@ -1964,22 +1958,17 @@
                     <input type="number" id="estLeafRust" value="0" min="0" oninput="updateDiseaseEstimator()" />
                     <div class="hint hint-leaf-rust">🍂 Major fungal threat</div>
                 </div>
-                <div class="estimator-item border-spider-mite">
-                    <label><i class="fas fa-spider" style="color:#6A1B9A;"></i> Red Spider Mite</label>
-                    <input type="number" id="estSpiderMite" value="0" min="0" oninput="updateDiseaseEstimator()" />
-                    <div class="hint hint-spider-mite">🕷️ Pest infestation</div>
-                </div>
             </div>
             <div class="estimator-result" id="diseaseEstimatorResult">
                 <div class="row"><span><i class="fas fa-circle" style="color:#8B6914;"></i> Brown Eye Spot</span><span id="estBrownEyeCount">0</span></div>
                 <div class="row"><span><i class="fas fa-bug" style="color:#2E7D32;"></i> Leaf Miner</span><span id="estLeafMinerCount">0</span></div>
                 <div class="row"><span><i class="fas fa-fire" style="color:#C62828;"></i> Leaf Rust</span><span id="estLeafRustCount">0</span></div>
-                <div class="row"><span><i class="fas fa-spider" style="color:#6A1B9A;"></i> Red Spider Mite</span><span id="estSpiderMiteCount">0</span></div>
-                <div class="row total-row"><span>📊 <strong>Total Disease Detections</strong></span><span id="estTotalDiseases">0</span></div>
+                <div class="row"><span><i class="fas fa-check-circle" style="color:#2D7A4A;"></i> No Disease</span><span id="estNoDiseaseCount">0</span></div>
+                <div class="row total-row"><span>📊 <strong>Total Issue Detections</strong></span><span id="estTotalDiseases">0</span></div>
                 <div class="row info-row" id="severityStatusRow"><span><i class="fas fa-heartbeat" style="color:#2d7a4a;"></i> Crop Health Status: <span id="estSeverityStatus">✅ Healthy</span></span></div>
                 <div class="recommendation-box" id="diseaseRecommendationBox">
                     <div class="rec-title">💡 AI Recommendation</div>
-                    <div class="rec-text" id="diseaseRecommendationText">No diseases detected. Keep monitoring your coffee plants regularly.</div>
+                    <div class="rec-text" id="diseaseRecommendationText">No issues detected. Keep monitoring your coffee plants regularly.</div>
                 </div>
             </div>
         </div>
@@ -1987,19 +1976,19 @@
         <div class="grid-2">
             <div class="section">
                 <div class="section-header">
-                    <h3><i class="fas fa-chart-line"></i> Disease Distribution</h3>
+                    <h3><i class="fas fa-chart-line"></i> Issue Distribution</h3>
                     <span style="font-size:0.8rem; color:#7a5a4a;">
                         <i class="fas fa-circle" style="color:#8B6914;"></i> Brown Eye
                         <i class="fas fa-circle" style="color:#2E7D32; margin-left:8px;"></i> Leaf Miner
                         <i class="fas fa-circle" style="color:#C62828; margin-left:8px;"></i> Leaf Rust
-                        <i class="fas fa-circle" style="color:#6A1B9A; margin-left:8px;"></i> Spider Mite
+                        <i class="fas fa-circle" style="color:#2D7A4A; margin-left:8px;"></i> No Disease
                     </span>
                 </div>
                 <div class="chart-container"><canvas id="advancedBarChart"></canvas></div>
             </div>
             <div class="section">
                 <div class="section-header">
-                    <h3><i class="fas fa-chart-pie"></i> Disease Breakdown</h3>
+                    <h3><i class="fas fa-chart-pie"></i> Issue Breakdown</h3>
                     <select id="pieFilter" onchange="updatePieChart()">
                         <option value="all">This Month ▼</option>
                         <option value="jan">January</option><option value="feb">February</option><option value="mar">March</option>
@@ -2023,8 +2012,8 @@
                     <img id="dashboardAvatarImage2" style="display:none; width:100%; height:100%; object-fit:cover;" />
                 </div>
                 <div class="name-section">
-                    <h1><i class="fas fa-table-list"></i> Disease Detection Studio</h1>
-                    <p>Upload coffee leaf images to detect diseases. <strong>Only coffee leaf images will be processed.</strong></p>
+                    <h1><i class="fas fa-table-list"></i> Disease & Pest Detection Studio</h1>
+                    <p>Upload coffee leaf images to detect diseases and pests. <strong>Only coffee leaf images will be processed.</strong></p>
                 </div>
             </div>
             <div class="topbar-actions">
@@ -2049,7 +2038,7 @@
             <div class="photo-preview" id="photoPreview">
                 <div class="preview-grid" id="previewContainer"></div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button class="btn-success" onclick="analyzeImages()"><i class="fas fa-wand-magic-sparkles"></i> Detect Diseases</button>
+                    <button class="btn-success" onclick="analyzeImages()"><i class="fas fa-wand-magic-sparkles"></i> Detect Issues</button>
                     <button class="btn-secondary" onclick="removeAllPhotos()"><i class="fas fa-trash-can"></i> Remove All</button>
                 </div>
             </div>
@@ -2060,7 +2049,7 @@
             </div>
             <div class="prediction-result" id="predictionSummary">
                 <div class="result-text"><i class="fas fa-list-check" style="color:#2a7f3e;"></i> Summary</div>
-                <div class="confidence-text" id="summaryCounts">Brown Eye: 0 | Leaf Miner: 0 | Rust: 0 | Spider Mite: 0</div>
+                <div class="confidence-text" id="summaryCounts">Brown Eye: 0 | Leaf Miner: 0 | Leaf Rust: 0 | No Disease: 0</div>
                 <div class="confidence-text severity-badge severity-healthy" id="summarySeverity">
                     Severity: Healthy
                     <span class="severity-tooltip" title="Healthy: 0 detections. Low: 1-2 detections. Moderate: 3-7 detections. Severe: 8+ detections.">ℹ️</span>
@@ -2072,7 +2061,7 @@
             <div class="prediction-stat-card stat-brown-eye"><div class="stat-value" id="statBrownEye">0</div><div class="stat-label">Brown Eye Spot</div></div>
             <div class="prediction-stat-card stat-leaf-miner"><div class="stat-value" id="statLeafMiner">0</div><div class="stat-label">Leaf Miner</div></div>
             <div class="prediction-stat-card stat-leaf-rust"><div class="stat-value" id="statLeafRust">0</div><div class="stat-label">Leaf Rust</div></div>
-            <div class="prediction-stat-card stat-spider-mite"><div class="stat-value" id="statSpiderMite">0</div><div class="stat-label">Red Spider Mite</div></div>
+            <div class="prediction-stat-card stat-no-disease"><div class="stat-value" id="statNoDisease">0</div><div class="stat-label">No Disease</div></div>
             <div class="prediction-stat-card stat-total-diseases"><div class="stat-value" id="statTotalDiseases">0</div><div class="stat-label">Total Detections</div></div>
         </div>
 
@@ -2118,8 +2107,8 @@
                     <img id="dashboardAvatarImageCamera" style="display:none; width:100%; height:100%; object-fit:cover;" />
                 </div>
                 <div class="name-section">
-                    <h1><i class="fas fa-camera"></i> Disease Camera</h1>
-                    <p>Take a photo of coffee leaves for instant disease detection.</p>
+                    <h1><i class="fas fa-camera"></i> Disease & Pest Camera</h1>
+                    <p>Take a photo of coffee leaves for instant disease and pest detection.</p>
                 </div>
             </div>
             <div class="topbar-actions">
@@ -2166,8 +2155,8 @@
                     <img id="dashboardAvatarImageGallery" style="display:none; width:100%; height:100%; object-fit:cover;" />
                 </div>
                 <div class="name-section">
-                    <h1><i class="fas fa-images"></i> Disease Gallery</h1>
-                    <p>View all your analyzed coffee leaf images with disease detections.</p>
+                    <h1><i class="fas fa-images"></i> Issue Gallery</h1>
+                    <p>View all your analyzed coffee leaf images with disease and pest detections.</p>
                 </div>
             </div>
             <div class="topbar-actions">
@@ -2183,11 +2172,10 @@
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <select id="galleryFilter" onchange="renderGallery()">
                         <option value="all">All Diseases</option>
-                        <option value="brown_eye_spot">Brown Eye Spot</option>
-                        <option value="leaf_miner">Leaf Miner</option>
                         <option value="leaf_rust">Leaf Rust</option>
-                        <option value="red_spider_mite">Red Spider Mite</option>
+                        <option value="brown_eye_spot">Brown Eye Spot</option>
                         <option value="no_disease">No Disease</option>
+                        <option value="leaf_miner">Leaf Miner</option>
                     </select>
                     <button class="btn-secondary btn-sm" onclick="renderGallery()"><i class="fas fa-rotate"></i> Refresh</button>
                 </div>
@@ -2210,8 +2198,8 @@
                     <img id="dashboardAvatarImage3" style="display:none; width:100%; height:100%; object-fit:cover;" />
                 </div>
                 <div class="name-section">
-                    <h1><i class="fas fa-file-alt"></i> Disease Reports</h1>
-                    <p>View and manage your coffee disease reports.</p>
+                    <h1><i class="fas fa-file-alt"></i> Reports</h1>
+                    <p>View and manage your coffee disease and pest reports.</p>
                 </div>
             </div>
             <div class="topbar-actions">
@@ -2292,7 +2280,7 @@
             <option value="en">🇬🇧 English</option>
             <option value="lg">🇺🇬 Luganda</option>
         </select>
-        <div class="lang-preview" id="langPreview"><i class="fas fa-comment"></i> Hello! CoffeeGuard helps you detect coffee leaf diseases.</div>
+        <div class="lang-preview" id="langPreview"><i class="fas fa-comment"></i> Hello! CoffeeGuard helps you detect coffee leaf diseases and pests.</div>
         <div id="langStatusBadge"></div>
         <label>Appearance</label>
         <div style="display:flex; gap:12px; margin:8px 0 14px; flex-wrap:wrap;">
@@ -2321,11 +2309,11 @@
         </div>
         <div class="about-simple">
             <h4><span class="icon">☕</span> What Does CoffeeGuard Do?</h4>
-            <p>CoffeeGuard uses AI to detect diseases on coffee leaves. Just upload a photo, and CoffeeGuard identifies <strong class="highlight">Brown Eye Spot</strong>, <strong class="highlight">Leaf Miner</strong>, <strong class="highlight">Leaf Rust</strong>, or <strong class="highlight">Red Spider Mite</strong>.</p>
+            <p>CoffeeGuard uses AI to detect important coffee leaf diseases and pests. Just upload a photo, and CoffeeGuard identifies <strong class="highlight">Brown Eye Spot</strong>, <strong class="highlight">Leaf Miner</strong>, <strong class="highlight">Leaf Rust</strong>, or <strong class="highlight">No Disease</strong>.</p>
         </div>
         <div class="about-simple" style="background: #f5ede8; border-left: 4px solid #8b1a1a;">
             <h4><span class="icon">📱</span> How to Use</h4>
-            <p><strong>1.</strong> Take a clear photo of your coffee leaves<br><strong>2.</strong> Upload it to CoffeeGuard<br><strong>3.</strong> Get instant disease detection with confidence scores<br><strong>4.</strong> Follow the AI recommendations to protect your crop</p>
+            <p><strong>1.</strong> Take a clear photo of your coffee leaves<br><strong>2.</strong> Upload it to CoffeeGuard<br><strong>3.</strong> Get instant disease and pest detection with confidence scores<br><strong>4.</strong> Follow the AI recommendations to protect your crop</p>
         </div>
         <p style="color:#7a5a4a; font-size:0.85rem; border-top:1px solid #f0e0d8; padding-top:12px; margin-top:12px;"><i class="fas fa-code"></i> Version 2.0.3 &nbsp;|&nbsp; <i class="fas fa-copyright"></i> 2026 CoffeeGuard</p>
         <div class="btn-group"><button onclick="closeModal('aboutModal')">Close</button></div>
@@ -2392,21 +2380,20 @@
 const translations = {
     en: {
         welcomeText: "Welcome back,",
-        dashboardSubtext: "Monitor your coffee leaf health and detect diseases early.",
+        dashboardSubtext: "Monitor your coffee leaf health and detect diseases and pests early.",
         profileBtnText: "Profile",
         reportBtnText: "Generate Report",
         viewAllBtnText: "View All",
         brownEyeLabel: "Brown Eye Spot",
         leafMinerLabel: "Leaf Miner",
         leafRustLabel: "Leaf Rust",
-        spiderMiteLabel: "Red Spider Mite",
+        noDiseaseLabel: "No Disease",
         healthStatusLabel: "Crop Health",
         diseaseSeverityTitle: "Disease Severity Assessment",
-        severityDesc: "Enter disease counts to assess crop health and get treatment recommendations.",
-        brownEyeHint: "Fungal leaf spot",
-        leafMinerHint: "Pest infestation",
-        leafRustHint: "Major fungal threat",
-        spiderMiteHint: "Pest infestation",
+        severityDesc: "Enter counts to assess crop health and get actionable recommendations.",
+        brownEyeHint: "Fungal disease: brown spots with reddish margins",
+        leafMinerHint: "Insect damage: irregular brown mines",
+        leafRustHint: "Fungal disease: yellow-orange rust pustules",
         totalDetectionsLabel: "Total Disease Detections",
         healthStatusText: "Crop Health Status",
         healthyLabel: "Healthy",
@@ -2414,36 +2401,36 @@ const translations = {
         moderateRiskLabel: "Moderate Risk",
         highRiskLabel: "High Risk",
         aiRecommendationLabel: "AI Recommendation",
-        noDiseaseRec: "No diseases detected. Keep monitoring your coffee plants regularly.",
-        diseaseDistributionLabel: "Disease Distribution",
-        diseaseBreakdownLabel: "Disease Breakdown",
-        diseaseDetectionStudio: "Disease Detection Studio",
-        detectionSubtext: "Upload coffee leaf images to detect diseases.",
+        noDiseaseRec: "No issues detected. Keep monitoring your coffee plants regularly.",
+        diseaseDistributionLabel: "Issue Distribution",
+        diseaseBreakdownLabel: "Issue Breakdown",
+        diseaseDetectionStudio: "Disease & Pest Detection Studio",
+        detectionSubtext: "Upload coffee leaf images to detect diseases and pests.",
         uploadLeavesLabel: "Upload Coffee Leaf Images",
-        detectDiseasesLabel: "Detect Diseases",
+        detectDiseasesLabel: "Detect Issues",
         detectionCompleteLabel: "Detection Complete",
         totalBrownEyeLabel: "Brown Eye Spot",
         totalLeafMinerLabel: "Leaf Miner",
         totalLeafRustLabel: "Leaf Rust",
-        totalSpiderMiteLabel: "Red Spider Mite",
+        totalNoDiseaseLabel: "No Disease",
         totalDetectionsLabel: "Total Detections",
         recentDetectionsLabel: "Recent Detections",
-        diseaseFoundLabel: "Disease Found",
+        diseaseFoundLabel: "Issue Found",
         detectionsLabel: "Detections",
         detectBtnLabel: "Detect",
-        diseaseCameraLabel: "Disease Camera",
-        cameraSubtext: "Take a photo of coffee leaves for instant disease detection.",
-        analyzeDiseaseLabel: "Detect Disease",
-        analyzingDiseaseLabel: "Analyzing coffee leaf for diseases...",
-        diseaseGalleryLabel: "Disease Gallery",
-        gallerySubtext: "View all your analyzed coffee leaf images with disease detections.",
-        allDiseasesLabel: "All Diseases",
-        diseaseReportsLabel: "Disease Reports",
-        reportsSubtext: "View and manage your coffee disease reports.",
-        aboutDesc: "CoffeeGuard uses AI to detect diseases on coffee leaves. Just upload a photo, and CoffeeGuard identifies Brown Eye Spot, Leaf Miner, Leaf Rust, or Red Spider Mite.",
-        step3: "Get instant disease detection with confidence scores",
+        diseaseCameraLabel: "Disease & Pest Camera",
+        cameraSubtext: "Take a photo of coffee leaves for instant disease and pest detection.",
+        analyzeDiseaseLabel: "Detect Issues",
+        analyzingDiseaseLabel: "Analyzing coffee leaf for diseases and pests...",
+        diseaseGalleryLabel: "Issue Gallery",
+        gallerySubtext: "View all your analyzed coffee leaf images with disease and pest detections.",
+        allDiseasesLabel: "All Issues",
+        diseaseReportsLabel: "Reports",
+        reportsSubtext: "View and manage your coffee disease and pest reports.",
+        aboutDesc: "CoffeeGuard uses AI to detect important coffee leaf diseases and pests. Just upload a photo, and CoffeeGuard identifies Brown Eye Spot, Leaf Miner, Leaf Rust, or No Disease.",
+        step3: "Get instant disease and pest detection with confidence scores",
         step4: "Follow the AI recommendations to protect your crop",
-        langPreviewText: "Hello! CoffeeGuard helps you detect coffee leaf diseases."
+        langPreviewText: "Hello! CoffeeGuard helps you detect coffee leaf diseases and pests."
     },
     lg: {
         welcomeText: "Kaale nnyo,",
@@ -2451,14 +2438,13 @@ const translations = {
         brownEyeLabel: "Kikunyu kya Brown",
         leafMinerLabel: "Akawuka ka Leaf Miner",
         leafRustLabel: "Kikunyu kya Leaf Rust",
-        spiderMiteLabel: "Akawuka ka Red Spider Mite",
+        noDiseaseLabel: "Tewali Ndwadde",
         healthStatusLabel: "Obulamu bwa Mwanyi",
         diseaseSeverityTitle: "Okupima Obuzibu bw'Endwadde",
         severityDesc: "Teeka omuwendo gw'endwadde okulaba obulamu bwa mwanyi zo n'okufuna amagezi ag'okulongoosa.",
         brownEyeHint: "Ekikunyu ky'amakonda",
         leafMinerHint: "Okulwala kw'akawuka",
         leafRustHint: "Ekikunyu eky'amaanyi",
-        spiderMiteHint: "Okulwala kw'akawuka",
         totalDetectionsLabel: "Endwadde Zonna",
         healthStatusText: "Obulamu bwa Mwanyi",
         healthyLabel: "Bulungi",
@@ -2477,7 +2463,7 @@ const translations = {
         totalBrownEyeLabel: "Kikunyu kya Brown",
         totalLeafMinerLabel: "Akawuka ka Leaf Miner",
         totalLeafRustLabel: "Kikunyu kya Leaf Rust",
-        totalSpiderMiteLabel: "Akawuka ka Red Spider Mite",
+        totalNoDiseaseLabel: "Tewali Ndwadde",
         totalDetectionsLabel: "Endwadde Zonna",
         recentDetectionsLabel: "Endwadde Ezisaanyisiddwa",
         diseaseFoundLabel: "Endwadde Erabiddwa",
@@ -2492,7 +2478,7 @@ const translations = {
         allDiseasesLabel: "Endwadde Zonna",
         diseaseReportsLabel: "Ripoti z'Endwadde",
         reportsSubtext: "Labako era oyige ripoti z'endwadde za mwanyi.",
-        aboutDesc: "CoffeeGuard kukozesa AI okulaba endwadde ku makonda ga mwanyi. Teeka ekifaananyi, CoffeeGuard kirabamu Kikunyu kya Brown, Akawuka ka Leaf Miner, Kikunyu kya Leaf Rust, oba Akawuka ka Red Spider Mite.",
+        aboutDesc: "CoffeeGuard kukozesa AI okulaba endwadde ku makonda ga mwanyi. Teeka ekifaananyi, CoffeeGuard kirabamu Kikunyu kya Brown, Akawuka ka Leaf Miner, Kikunyu kya Leaf Rust, oba Obulamu obutono.",
         step3: "Funa endwadde amangu n'okukakasa",
         step4: "Googera amagezi ga AI okukuuma mwanyi zo",
         langPreviewText: "Oli otya! CoffeeGuard ekuyamba okulaba endwadde ku makonda ga mwanyi."
@@ -2866,7 +2852,6 @@ function syncEstimatorWithPredictions(counts) {
     document.getElementById('estBrownEye').value = counts.brownEye;
     document.getElementById('estLeafMiner').value = counts.leafMiner;
     document.getElementById('estLeafRust').value = counts.leafRust;
-    document.getElementById('estSpiderMite').value = counts.spiderMite;
     updateDiseaseEstimator();
 }
 
@@ -2875,23 +2860,23 @@ function updateDashboard() {
     const brownEye = predictions.filter(p => predictionKey(p) === 'brown_eye_spot' && !p.failed).length;
     const leafMiner = predictions.filter(p => predictionKey(p) === 'leaf_miner' && !p.failed).length;
     const leafRust = predictions.filter(p => predictionKey(p) === 'leaf_rust' && !p.failed).length;
-    const spiderMite = predictions.filter(p => predictionKey(p) === 'red_spider_mite' && !p.failed).length;
+    const noDisease = predictions.filter(p => predictionKey(p) === 'no_disease' && !p.failed).length;
     const total = predictions.filter(p => !p.failed).length;
     
     document.getElementById('brownEyeCount').textContent = brownEye;
     document.getElementById('leafMinerCount').textContent = leafMiner;
     document.getElementById('leafRustCount').textContent = leafRust;
-    document.getElementById('spiderMiteCount').textContent = spiderMite;
+    const noDiseaseEl = document.getElementById('noDiseaseCount');
+    if (noDiseaseEl) noDiseaseEl.textContent = noDisease;
     
-    // Update health status
-    const hasDisease = brownEye > 0 || leafMiner > 0 || leafRust > 0 || spiderMite > 0;
+    const hasDisease = brownEye > 0 || leafMiner > 0 || leafRust > 0;
     let healthStatus = '🟢 Healthy';
     
     if (!hasDisease) {
         healthStatus = '🟢 Healthy';
-    } else if (leafRust > 2 || brownEye > 5 || leafMiner > 5 || spiderMite > 5) {
+    } else if (leafRust > 2 || brownEye > 5 || leafMiner > 5) {
         healthStatus = '🔴 High Risk';
-    } else if (leafRust > 0 || brownEye > 2 || leafMiner > 2 || spiderMite > 2) {
+    } else if (leafRust > 0 || brownEye > 2 || leafMiner > 2) {
         healthStatus = '🟡 Moderate Risk';
     } else {
         healthStatus = '🟢 Low Risk';
@@ -2899,7 +2884,7 @@ function updateDashboard() {
     
     document.getElementById('healthStatus').textContent = healthStatus;
     
-    syncEstimatorWithPredictions({ brownEye, leafMiner, leafRust, spiderMite, total });
+    syncEstimatorWithPredictions({ brownEye, leafMiner, leafRust, noDisease, total });
     updateCharts();
 }
 
@@ -2913,17 +2898,17 @@ function updateBarChart() {
     const brownEye = predictions.filter(p => predictionKey(p) === 'brown_eye_spot' && !p.failed).length;
     const leafMiner = predictions.filter(p => predictionKey(p) === 'leaf_miner' && !p.failed).length;
     const leafRust = predictions.filter(p => predictionKey(p) === 'leaf_rust' && !p.failed).length;
-    const spiderMite = predictions.filter(p => predictionKey(p) === 'red_spider_mite' && !p.failed).length;
+    const noDisease = predictions.filter(p => predictionKey(p) === 'no_disease' && !p.failed).length;
     
     if (barChart) barChart.destroy();
     barChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Brown Eye Spot', 'Leaf Miner', 'Leaf Rust', 'Red Spider Mite'],
+            labels: ['Brown Eye Spot', 'Leaf Miner', 'Leaf Rust', 'No Disease'],
             datasets: [{
                 label: 'Disease Detections',
-                data: [brownEye, leafMiner, leafRust, spiderMite],
-                backgroundColor: ['#8B6914', '#2E7D32', '#C62828', '#6A1B9A'],
+                data: [brownEye, leafMiner, leafRust, noDisease],
+                backgroundColor: ['#8B6914', '#2E7D32', '#C62828', '#2D7A4A'],
                 borderRadius: 6,
             }]
         },
@@ -2952,16 +2937,16 @@ function updatePieChart() {
     const brownEye = filtered.filter(p => predictionKey(p) === 'brown_eye_spot').length;
     const leafMiner = filtered.filter(p => predictionKey(p) === 'leaf_miner').length;
     const leafRust = filtered.filter(p => predictionKey(p) === 'leaf_rust').length;
-    const spiderMite = filtered.filter(p => predictionKey(p) === 'red_spider_mite').length;
+    const noDisease = filtered.filter(p => predictionKey(p) === 'no_disease').length;
     
     if (pieChart) pieChart.destroy();
     pieChart = new Chart(ctx, {
         type: 'pie',
         data: {
-            labels: ['Brown Eye Spot', 'Leaf Miner', 'Leaf Rust', 'Red Spider Mite'],
+            labels: ['Brown Eye Spot', 'Leaf Miner', 'Leaf Rust', 'No Disease'],
             datasets: [{
-                data: [brownEye, leafMiner, leafRust, spiderMite],
-                backgroundColor: ['#8B6914', '#2E7D32', '#C62828', '#6A1B9A'],
+                data: [brownEye, leafMiner, leafRust, noDisease],
+                backgroundColor: ['#8B6914', '#2E7D32', '#C62828', '#2D7A4A'],
                 borderColor: 'white',
                 borderWidth: 2,
             }]
@@ -2999,35 +2984,36 @@ function updateDiseaseEstimator() {
     const brownEye = parseInt(document.getElementById('estBrownEye').value) || 0;
     const leafMiner = parseInt(document.getElementById('estLeafMiner').value) || 0;
     const leafRust = parseInt(document.getElementById('estLeafRust').value) || 0;
-    const spiderMite = parseInt(document.getElementById('estSpiderMite').value) || 0;
-    const total = brownEye + leafMiner + leafRust + spiderMite;
+    const noDisease = 0;
+    const total = brownEye + leafMiner + leafRust;
     
     document.getElementById('estBrownEyeCount').textContent = brownEye;
     document.getElementById('estLeafMinerCount').textContent = leafMiner;
     document.getElementById('estLeafRustCount').textContent = leafRust;
-    document.getElementById('estSpiderMiteCount').textContent = spiderMite;
+    const estNoDiseaseEl = document.getElementById('estNoDiseaseCount');
+    if (estNoDiseaseEl) estNoDiseaseEl.textContent = noDisease;
     document.getElementById('estTotalDiseases').textContent = total;
     
     // Determine severity
     let status = '✅ Healthy';
-    let rec = 'No diseases detected. Keep monitoring your coffee plants regularly.';
+    let rec = 'No issues detected. Keep monitoring your coffee plants regularly.';
     let boxClass = '';
     
     if (total === 0) {
         status = '✅ Healthy';
-        rec = 'No diseases detected. Keep monitoring your coffee plants regularly.';
+        rec = 'No issues detected. Keep monitoring your coffee plants regularly.';
         boxClass = '';
     } else if (total < 3) {
         status = '🟢 Low Risk';
-        rec = '🟢 Low disease presence detected. Monitor closely and consider preventive measures.';
+        rec = '🟢 Low issue presence detected. Monitor closely and consider preventive measures.';
         boxClass = '';
     } else if (total < 8) {
         status = '🟡 Moderate Risk';
-        rec = '🟡 Moderate disease presence. Take action to control the spread.';
+        rec = '🟡 Moderate issue presence. Take action to control the spread.';
         boxClass = 'warning';
     } else {
         status = '🔴 High Risk';
-        rec = '🔴 High disease presence detected. Immediate action required to protect your crop.';
+        rec = '🔴 High issue presence detected. Immediate action required to protect your crop.';
         boxClass = 'danger';
     }
     
@@ -3040,9 +3026,6 @@ function updateDiseaseEstimator() {
         boxClass = 'warning';
     } else if (leafMiner > 0) {
         rec = '🐛 Leaf Miner detected. Monitor infestation and use integrated pest management where needed.';
-        boxClass = 'warning';
-    } else if (spiderMite > 0) {
-        rec = '🕷️ Red Spider Mite detected. Inspect plants regularly and use suitable mite control methods if populations become severe.';
         boxClass = 'warning';
     }
     
@@ -3084,13 +3067,11 @@ function loadHistory() {
         const displayName = p.result === 'no_disease' ? 'No Disease' : 
                            p.result === 'brown_eye_spot' ? 'Brown Eye Spot' :
                            p.result === 'leaf_miner' ? 'Leaf Miner' :
-                           p.result === 'leaf_rust' ? 'Leaf Rust' :
-                           p.result === 'red_spider_mite' ? 'Red Spider Mite' : p.result;
+                           p.result === 'leaf_rust' ? 'Leaf Rust' : p.result;
         const badgeClass = p.result === 'no_disease' ? 'badge-no-disease' :
                            p.result === 'brown_eye_spot' ? 'badge-brown-eye' :
                            p.result === 'leaf_miner' ? 'badge-leaf-miner' :
-                           p.result === 'leaf_rust' ? 'badge-leaf-rust' :
-                           p.result === 'red_spider_mite' ? 'badge-spider-mite' : 'badge-no-disease';
+                           p.result === 'leaf_rust' ? 'badge-leaf-rust' : 'badge-no-disease';
         resultTd.innerHTML = `<span class="badge ${badgeClass}">${displayName}</span>`;
         tr.appendChild(resultTd);
         
@@ -3148,14 +3129,12 @@ function renderGallery() {
         const badgeClass = p.result === 'no_disease' ? 'no-disease' :
                            p.result === 'brown_eye_spot' ? 'brown-eye-spot' :
                            p.result === 'leaf_miner' ? 'leaf-miner' :
-                           p.result === 'leaf_rust' ? 'leaf-rust' :
-                           p.result === 'red_spider_mite' ? 'red-spider-mite' : 'no-disease';
+                           p.result === 'leaf_rust' ? 'leaf-rust' : 'no-disease';
         badge.className = `gallery-badge ${badgeClass}`;
         const displayName = p.result === 'no_disease' ? 'No Disease' : 
                            p.result === 'brown_eye_spot' ? 'Brown Eye Spot' :
                            p.result === 'leaf_miner' ? 'Leaf Miner' :
-                           p.result === 'leaf_rust' ? 'Leaf Rust' :
-                           p.result === 'red_spider_mite' ? 'Red Spider Mite' : p.result;
+                           p.result === 'leaf_rust' ? 'Leaf Rust' : p.result;
         badge.textContent = displayName;
         const countBadge = document.createElement('span');
         countBadge.style.cssText = 'position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.7); color:white; padding:2px 8px; border-radius:12px; font-size:0.6rem;';
@@ -3390,7 +3369,10 @@ async function analyzeImages() {
                 disease_count: result.disease_count || 0,
                 class_counts: result.class_counts || {},
                 severity: result.severity || 'healthy',
-                recommendation: result.recommendation || ''
+                recommendation: result.recommendation || '',
+                secondary_screening: result.secondary_screening || null,
+                review_required: Boolean(result.review_required),
+                confirmed_detections: Number(result.confirmed_detections || 0)
             });
         } catch (error) {
             console.error('Error analyzing image:', error);
@@ -3438,10 +3420,11 @@ function displayAnalysisResults(results) {
         document.getElementById('statBrownEye').textContent = '0';
         document.getElementById('statLeafMiner').textContent = '0';
         document.getElementById('statLeafRust').textContent = '0';
-        document.getElementById('statSpiderMite').textContent = '0';
+        const noDiseaseStat = document.getElementById('statNoDisease');
+        if (noDiseaseStat) noDiseaseStat.textContent = '0';
         document.getElementById('statTotalDiseases').textContent = '0';
         document.getElementById('resultCount').textContent = 'Predicted figures: 0';
-        document.getElementById('summaryCounts').textContent = 'Brown Eye: 0 | Leaf Miner: 0 | Rust: 0 | Spider Mite: 0';
+        document.getElementById('summaryCounts').textContent = 'Leaf Rust: 0 | Brown Eye: 0 | No Disease: 0 | Leaf Miner: 0';
         const severityElement = document.getElementById('summarySeverity');
         severityElement.textContent = 'Severity: Healthy';
         severityElement.classList.remove('severity-low','severity-moderate','severity-severe');
@@ -3456,10 +3439,10 @@ function displayAnalysisResults(results) {
     // detections.  Summing these four values guarantees that the total and
     // category counts always agree.
     const classTotals = {
-        brown_eye_spot: 0,
-        leaf_miner: 0,
         leaf_rust: 0,
-        red_spider_mite: 0
+        brown_eye_spot: 0,
+        no_disease: 0,
+        leaf_miner: 0
     };
     validResults.forEach(result => {
         Object.keys(classTotals).forEach(key => {
@@ -3467,23 +3450,32 @@ function displayAnalysisResults(results) {
         });
     });
 
-    const brownEye = classTotals.brown_eye_spot;
-    const leafMiner = classTotals.leaf_miner;
     const leafRust = classTotals.leaf_rust;
-    const spiderMite = classTotals.red_spider_mite;
-    const totalDiseases = brownEye + leafMiner + leafRust + spiderMite;
+    const brownEye = classTotals.brown_eye_spot;
+    const noDisease = classTotals.no_disease;
+    const leafMiner = classTotals.leaf_miner;
+    const totalDiseases = leafRust + brownEye + noDisease + leafMiner;
+    const screeningAlerts = validResults
+        .map(result => result.secondary_screening)
+        .filter(Boolean);
+    const reviewRequired = validResults.some(result => result.review_required) || screeningAlerts.length > 0;
+    const confirmedDetections = validResults.reduce(
+        (sum, result) => sum + Number(result.confirmed_detections || 0), 0
+    );
     
     document.getElementById('statBrownEye').textContent = brownEye;
     document.getElementById('statLeafMiner').textContent = leafMiner;
     document.getElementById('statLeafRust').textContent = leafRust;
-    document.getElementById('statSpiderMite').textContent = spiderMite;
+    document.getElementById('statNoDisease').textContent = noDisease;
     document.getElementById('statTotalDiseases').textContent = totalDiseases;
-    document.getElementById('resultCount').textContent = `Predicted figures: ${totalDiseases}`;
-    document.getElementById('summaryCounts').textContent = `Brown Eye: ${brownEye} | Leaf Miner: ${leafMiner} | Rust: ${leafRust} | Spider Mite: ${spiderMite}`;
+    document.getElementById('resultCount').textContent = screeningAlerts.length
+        ? `Model detections: ${totalDiseases} | Screening alerts: ${screeningAlerts.length}`
+        : `Predicted figures: ${totalDiseases}`;
+    document.getElementById('summaryCounts').textContent = `Leaf Rust: ${leafRust} | Brown Eye: ${brownEye} | No Disease: ${noDisease} | Leaf Miner: ${leafMiner}`;
 
-    let severityLabel = 'Healthy';
-    let severityClass = 'severity-healthy';
-    if (totalDiseases >= 8) {
+    let severityLabel = reviewRequired ? 'Review needed' : 'Healthy';
+    let severityClass = reviewRequired ? 'severity-moderate' : 'severity-healthy';
+    if (!reviewRequired && totalDiseases >= 8) {
         severityLabel = 'Severe';
         severityClass = 'severity-severe';
     } else if (totalDiseases >= 3) {
@@ -3503,10 +3495,30 @@ function displayAnalysisResults(results) {
             <span><i class="fas fa-circle" style="color:#8B6914;"></i> Brown Eye Spot: <strong>${brownEye}</strong></span>
             <span><i class="fas fa-bug" style="color:#2E7D32;"></i> Leaf Miner: <strong>${leafMiner}</strong></span>
             <span><i class="fas fa-fire" style="color:#C62828;"></i> Leaf Rust: <strong>${leafRust}</strong></span>
-            <span><i class="fas fa-spider" style="color:#6A1B9A;"></i> Red Spider Mite: <strong>${spiderMite}</strong></span>
+            <span><i class="fas fa-check-circle" style="color:#2D7A4A;"></i> No Disease: <strong>${noDisease}</strong></span>
             <span><i class="fas fa-hashtag" style="color:#8b1a1a;"></i> Total Detections: <strong>${totalDiseases}</strong></span>
         </div>
     `;
+
+    if (screeningAlerts.length) {
+        summaryHTML += screeningAlerts.map(alert => `
+            <div style="color:#8b1a1a; background:#fff4e8; border-left:4px solid #d97706; padding:10px; border-radius:6px; margin-top:8px;">
+                <strong>Visual screening alert:</strong> possible ${alert.label}
+                (${Number(alert.confidence || 0).toFixed(1)}%). The main detector did not locate a matching lesion box.
+                Please inspect the plant or consult an agronomist before treatment.
+            </div>
+        `).join('');
+    }
+
+    if (reviewRequired && totalDiseases > 0) {
+        summaryHTML += `
+            <div style="color:#8b1a1a; background:#fff4e8; border-left:4px solid #d97706; padding:10px; border-radius:6px; margin-top:8px;">
+                <strong>Review recommended:</strong> ${totalDiseases} possible symptom area(s) were found, but only
+                ${confirmedDetections} meet the confirmation threshold. These are not yet a field diagnosis.
+                Please inspect the upper and lower leaf surfaces and confirm with a Ugandan extension officer or agronomist before treatment.
+            </div>
+        `;
+    }
     
     if (failedCount > 0) {
         summaryHTML += `
@@ -3518,10 +3530,13 @@ function displayAnalysisResults(results) {
     }
     
     document.getElementById('analysisSummary').innerHTML = summaryHTML;
-    document.getElementById('resultCount').textContent = `Predicted figures: ${totalDiseases}`;
+    document.getElementById('resultCount').textContent = screeningAlerts.length
+        ? `Model detections: ${totalDiseases} | Screening alerts: ${screeningAlerts.length}`
+        : `Predicted figures: ${totalDiseases}`;
     document.getElementById('predictionResult').style.display = 'block';
-    document.getElementById('predictionResult').querySelector('.result-text').innerHTML = 
-        '<i class="fas fa-check-circle" style="color:#3e9e6d;"></i> Detection Complete';
+    document.getElementById('predictionResult').querySelector('.result-text').innerHTML = reviewRequired
+        ? '<i class="fas fa-triangle-exclamation" style="color:#d97706;"></i> Review Recommended'
+        : '<i class="fas fa-check-circle" style="color:#3e9e6d;"></i> Detection Complete';
     
     fetchPredictionsFromServer();
     showToast(`✅ Analysis complete! ${totalDiseases} total disease detections.`, 'success');
@@ -3781,7 +3796,7 @@ function shareImage() {
 }
 
 function shareResults() {
-    const stats = `Brown Eye: ${document.getElementById('statBrownEye').textContent}, Leaf Miner: ${document.getElementById('statLeafMiner').textContent}, Leaf Rust: ${document.getElementById('statLeafRust').textContent}, Spider Mite: ${document.getElementById('statSpiderMite').textContent}`;
+    const stats = `Brown Eye: ${document.getElementById('statBrownEye').textContent}, Leaf Miner: ${document.getElementById('statLeafMiner').textContent}, Leaf Rust: ${document.getElementById('statLeafRust').textContent}, No Disease: ${document.getElementById('statNoDisease').textContent}`;
     if (navigator.share) {
         navigator.share({
             title: 'CoffeeGuard Disease Detection Results',
@@ -3817,13 +3832,11 @@ async function analyzeCapturedImage() {
             const displayName = result.result || 'Unknown Disease';
             const emoji = result.result === 'brown_eye_spot' ? '🍂' :
                           result.result === 'leaf_miner' ? '🐛' :
-                          result.result === 'leaf_rust' ? '🔥' :
-                          result.result === 'red_spider_mite' ? '🕷️' : '🔬';
+                          result.result === 'leaf_rust' ? '🔥' : '🔬';
             
             const badgeClass = result.result === 'brown_eye_spot' ? 'badge-brown-eye' :
                               result.result === 'leaf_miner' ? 'badge-leaf-miner' :
-                              result.result === 'leaf_rust' ? 'badge-leaf-rust' :
-                              result.result === 'red_spider_mite' ? 'badge-spider-mite' : 'badge-no-disease';
+                              result.result === 'leaf_rust' ? 'badge-leaf-rust' : 'badge-no-disease';
             
             const severityEmoji = result.severity === 'healthy' ? '🟢' :
                                  result.severity === 'low' ? '🟡' :
@@ -3920,7 +3933,7 @@ function loadReports() {
                 <span><i class="fas fa-circle" style="color:#8B6914;"></i> Brown Eye: ${report.brown_eye_spot || 0}</span>
                 <span><i class="fas fa-bug" style="color:#2E7D32;"></i> Leaf Miner: ${report.leaf_miner || 0}</span>
                 <span><i class="fas fa-fire" style="color:#C62828;"></i> Leaf Rust: ${report.leaf_rust || 0}</span>
-                <span><i class="fas fa-spider" style="color:#6A1B9A;"></i> Spider Mite: ${report.red_spider_mite || 0}</span>
+                <span><i class="fas fa-check-circle" style="color:#2D7A4A;"></i> No Disease: ${report.no_disease || 0}</span>
                 <span><i class="fas fa-hashtag" style="color:#8b1a1a;"></i> Total: ${report.total_detections || 0}</span>
             </div>
         `;
@@ -3949,7 +3962,7 @@ function generateReport() {
           const brownEye = predictions.filter(p => p.result === 'brown_eye_spot' && !p.failed).length;
           const leafMiner = predictions.filter(p => p.result === 'leaf_miner' && !p.failed).length;
           const leafRust = predictions.filter(p => p.result === 'leaf_rust' && !p.failed).length;
-          const spiderMite = predictions.filter(p => p.result === 'red_spider_mite' && !p.failed).length;
+          const noDisease = predictions.filter(p => p.result === 'no_disease' && !p.failed).length;
           const total = predictions.filter(p => !p.failed).length;
           const totalDiseases = predictions.reduce((sum, p) => sum + (p.disease_count || 0), 0);
           const report = {
@@ -3959,7 +3972,7 @@ function generateReport() {
               brown_eye_spot: brownEye,
               leaf_miner: leafMiner,
               leaf_rust: leafRust,
-              red_spider_mite: spiderMite,
+              no_disease: noDisease,
               total: total,
               total_detections: totalDiseases
           };
@@ -4027,8 +4040,7 @@ function exportCSV() {
         p.result === 'no_disease' ? 'No Disease' :
         p.result === 'brown_eye_spot' ? 'Brown Eye Spot' :
         p.result === 'leaf_miner' ? 'Leaf Miner' :
-        p.result === 'leaf_rust' ? 'Leaf Rust' :
-        p.result === 'red_spider_mite' ? 'Red Spider Mite' : p.result,
+        p.result === 'leaf_rust' ? 'Leaf Rust' : p.result,
         p.failed ? 'N/A' : Math.round(p.confidence || 0),
         p.disease_count || 0,
         p.severity || 'healthy',

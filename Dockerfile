@@ -40,5 +40,7 @@ ENV FLASK_ENV=production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/').read()"
 
-# Start Flask application
-CMD ["python", "-u", "app.py"]
+# The Render container does not ship the trained model, so download it on first
+# startup if it is missing. This keeps the app deployable without committing a
+# large .pt file to GitHub.
+CMD ["sh", "-c", "if [ ! -f best.pt ] && [ ! -f decafia_best.onnx ]; then python download_model.py || true; fi; gunicorn --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:${PORT:-5000} app:app"]
