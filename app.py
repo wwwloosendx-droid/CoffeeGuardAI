@@ -78,9 +78,12 @@ NEWS_API_URL = "https://newsapi.org/v2/everything"
 # FLASK APP
 # =========================
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
-app.secret_key = os.getenv('SECRET_KEY')
-if not app.secret_key:
-    raise RuntimeError('SECRET_KEY must be configured in the environment before starting CoffeeGuardAI.')
+# Always give Flask a secret key so the container can boot cleanly even when the
+# Render environment has not populated SECRET_KEY yet. The dashboard should still
+# set a real value in production for better session security.
+app.secret_key = os.getenv('SECRET_KEY') or 'coffee-guard-ai-dev-secret-change-me'
+if not os.getenv('SECRET_KEY'):
+    print('⚠️ SECRET_KEY not set in environment; using safe fallback for startup only.')
 
 # Session configuration
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -88,12 +91,6 @@ app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'false'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['MAX_COOKIE_SIZE'] = 8192
-
-# Render may not populate SECRET_KEY immediately on first boot, so provide a safe
-# fallback that still allows the app to start. Production deployments should set a
-# real secret in the environment to keep sessions secure.
-if not app.secret_key:
-    app.secret_key = os.getenv('SECRET_KEY') or 'coffee-guard-ai-dev-secret-change-me'
 
 # Upload folders
 app.config['UPLOAD_FOLDER'] = os.path.join(STATIC_DIR, 'uploads')
