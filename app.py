@@ -89,6 +89,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['MAX_COOKIE_SIZE'] = 8192
 
+# Render may not populate SECRET_KEY immediately on first boot, so provide a safe
+# fallback that still allows the app to start. Production deployments should set a
+# real secret in the environment to keep sessions secure.
+if not app.secret_key:
+    app.secret_key = os.getenv('SECRET_KEY') or 'coffee-guard-ai-dev-secret-change-me'
+
 # Upload folders
 app.config['UPLOAD_FOLDER'] = os.path.join(STATIC_DIR, 'uploads')
 app.config['HEATMAP_FOLDER'] = os.path.join(STATIC_DIR, 'heatmaps')
