@@ -38,6 +38,10 @@ EXPOSE 5000
 # Flask environment variables
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
+# This service runs the ONNX disease model on CPU.  Avoid CUDA discovery and
+# keep inference thread usage within the Render instance's memory limits.
+ENV CUDA_VISIBLE_DEVICES=""
+ENV OMP_NUM_THREADS=1
 
 # Health check (uses Render-assigned PORT if provided)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \

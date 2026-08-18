@@ -7,8 +7,11 @@ Flask-Limiter==3.3.1
 gunicorn==23.0.0
 
 # AI/ML Libraries
-torch==2.3.1
-torchvision==0.18.1
+# Render has no GPU.  The normal PyPI wheels pull several CUDA packages and
+# cause the web worker to be killed while loading the ONNX disease model.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu
+torchvision==0.18.1+cpu
 ultralytics==8.4.106
 # The deployed disease model is ONNX.  Ultralytics does not install this
 # runtime reliably as a transitive dependency in a minimal Docker image.
