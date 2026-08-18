@@ -1941,6 +1941,61 @@ def validate_image():
             "message": f"Error validating image: {str(e)}"
         }), 500
 
+
+# Admin debug endpoint: POST an image (form-data 'image') and receive full detection JSON.
+# Requires ADMIN_DEBUG_TOKEN env var to be set and provided in header 'X-ADMIN-TOKEN'.
+@app.route('/admin/debug_detect', methods=['POST'])
+def admin_debug_detect():
+    token = os.getenv('ADMIN_DEBUG_TOKEN')
+    header = request.headers.get('X-ADMIN-TOKEN')
+    if not token:
+        return jsonify({"error": "ADMIN_DEBUG_TOKEN not configured on server"}), 403
+    if header != token:
+        return jsonify({"error": "invalid admin token"}), 403
+
+    if 'image' not in request.files:
+        return jsonify({"error": "No image uploaded"}), 400
+
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+
+    try:
+        image = Image.open(file.stream).convert('RGB')
+    except Exception as e:
+        return jsonify({"error": f"Could not read image: {e}"}), 400
+
+    result = detect_diseases(image)
+
+    # Sanitize result for JSON (convert numpy / numpy.bool_ etc.)
+    try:
+        sanitized = {
+            'success': bool(result.get('success', False)),
+            'total_detections': int(result.get('total_detections', 0)),
+            'class_counts': {k: int(v) for k, v in result.get('class_counts', {}).items()},
+            'primary_disease': result.get('primary_disease'),
+            'avg_confidence': float(result.get('avg_confidence', 0.0)),
+            'debug_detections': result.get('debug_detections', []),
+            'detections': [
+                {
+                    'class_name': d.get('class_name'),
+                    'confidence': float(d.get('confidence', 0.0)),
+                    'bbox': [int(x) for x in d.get('bbox', [])],
+                    'reference_validated': bool(d.get('reference_validated', False)),
+                    'feature_score': float(d.get('feature_score', 0.0)) if d.get('feature_score') is not None else None
+                }
+                for d in result.get('detections', [])
+            ],
+            'secondary_screening': result.get('secondary_screening'),
+            'severity': result.get('severity'),
+            'recommendation': result.get('recommendation')
+        }
+    except Exception:
+        # Fallback: return raw result as stringified JSON
+        return jsonify({"error": "Failed to sanitize detection result", "raw": str(result)}), 500
+
+    return jsonify(sanitized)
+
 @app.route('/validate_and_predict', methods=['POST'])
 def validate_and_predict():
     if 'email' not in session:
