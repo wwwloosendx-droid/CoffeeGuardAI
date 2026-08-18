@@ -1759,6 +1759,18 @@ def predict():
             }), 400
         
         detection_result = detect_diseases(image)
+        # Log detection internals to help debug zero-detection cases on deployed app
+        try:
+            short_debug = {
+                'total_detections': int(detection_result.get('total_detections', 0)),
+                'avg_confidence': float(detection_result.get('avg_confidence', 0.0)),
+                'class_counts': detection_result.get('class_counts', {}),
+                'debug_detections': detection_result.get('debug_detections', []),
+                'secondary_screening': detection_result.get('secondary_screening')
+            }
+            logging.info(f"Detection debug for {filename}: {json.dumps(short_debug, default=str)}")
+        except Exception:
+            logging.exception("Failed to log detection debug")
 
         secondary_screening = detection_result.get('secondary_screening')
         if detection_result['success'] and detection_result['has_disease']:
