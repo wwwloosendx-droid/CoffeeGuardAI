@@ -43,7 +43,6 @@ ENV FLASK_ENV=production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD python -c "import os, urllib.request; port=os.environ.get('PORT','5000'); urllib.request.urlopen(f'http://localhost:{port}/health').read()"
 
-# The Render container does not ship the trained model, so download it on first
-# startup if it is missing. This keeps the app deployable without committing a
-# large .pt file to GitHub.
-CMD ["sh", "-c", "if [ ! -f best.pt ] && [ ! -f decafia_best.onnx ]; then python download_model.py || true; fi; gunicorn --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:${PORT:-5000} app:app"]
+# decafia_best.onnx is the bundled coffee-leaf disease model.  Never download
+# or select best.pt here: it is a different coffee-cherry model.
+CMD ["sh", "-c", "exec gunicorn --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:${PORT:-5000} app:app"]

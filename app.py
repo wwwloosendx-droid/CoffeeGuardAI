@@ -470,7 +470,8 @@ def resolve_model_class_name(class_name, cls_id=None):
             return disease_keys[cls_id]
     return normalized
 
-# Detection settings. These match the image size used when best.pt was trained.
+# Detection settings. These match the image size used when decafia_best.onnx
+# was trained.
 # A very low threshold, test-time augmentation and always-on tiling caused the
 # same lesion to be reported many times and made false positives look reliable.
 # Keep lower-confidence boxes as *possible* symptoms.  Field photos from
@@ -553,11 +554,19 @@ DISEASE_SEVERITY = {
 def load_model():
     global model, MODEL_AVAILABLE, CLASS_MAP, MODEL_LOAD_ERROR, MODEL_PATH
 
+    # The app is a coffee-leaf disease detector.  Do not select best.pt here:
+    # it is a different (coffee-cherry) model and was making Render return the
+    # wrong predictions while local development used the disease ONNX model.
+    # MODEL_PATH remains an explicit override for a deliberately mounted model.
     candidate_paths = [
         os.getenv('MODEL_PATH', ''),
-        os.path.join(BASE_DIR, 'best.pt'),
-        os.path.join(BASE_DIR, 'best.onnx'),
         os.path.join(BASE_DIR, 'decafia_best.onnx'),
+        os.path.join(
+            BASE_DIR,
+            'YOLOv8-Based-SUNet-Real-Time-Coffee-Leaf-Disease-Detection-Using-a-Hybrid-Deep-Learning-Model',
+            'decafia_best.onnx',
+        ),
+        os.path.join(BASE_DIR, 'best.onnx'),
         os.path.join(os.path.expanduser('~'), 'Downloads', 'decafia_best.onnx'),
     ]
 
@@ -565,7 +574,7 @@ def load_model():
 
     if model_path is None:
         MODEL_LOAD_ERROR = 'No trained disease model file was found.'
-        print(f"❌ {MODEL_LOAD_ERROR} Looked for: best.pt, best.onnx, decafia_best.onnx")
+        print(f"❌ {MODEL_LOAD_ERROR} Looked for: decafia_best.onnx, best.onnx")
         return False
 
     try:
