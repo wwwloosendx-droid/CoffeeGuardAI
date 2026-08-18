@@ -470,7 +470,7 @@ def resolve_model_class_name(class_name, cls_id=None):
             return disease_keys[cls_id]
     return normalized
 
-# Detection settings. These match the image size used when decafia_best.onnx
+# Detection settings. These match the image size used when decfia_best.onnx
 # was trained.
 # A very low threshold, test-time augmentation and always-on tiling caused the
 # same lesion to be reported many times and made false positives look reliable.
@@ -560,13 +560,20 @@ def load_model():
     # MODEL_PATH remains an explicit override for a deliberately mounted model.
     candidate_paths = [
         os.getenv('MODEL_PATH', ''),
+        os.path.join(BASE_DIR, 'decfia_best.onnx'),
         os.path.join(BASE_DIR, 'decafia_best.onnx'),
+        os.path.join(
+            BASE_DIR,
+            'YOLOv8-Based-SUNet-Real-Time-Coffee-Leaf-Disease-Detection-Using-a-Hybrid-Deep-Learning-Model',
+            'decfia_best.onnx',
+        ),
         os.path.join(
             BASE_DIR,
             'YOLOv8-Based-SUNet-Real-Time-Coffee-Leaf-Disease-Detection-Using-a-Hybrid-Deep-Learning-Model',
             'decafia_best.onnx',
         ),
         os.path.join(BASE_DIR, 'best.onnx'),
+        os.path.join(os.path.expanduser('~'), 'Downloads', 'decfia_best.onnx'),
         os.path.join(os.path.expanduser('~'), 'Downloads', 'decafia_best.onnx'),
     ]
 
@@ -574,7 +581,7 @@ def load_model():
 
     if model_path is None:
         MODEL_LOAD_ERROR = 'No trained disease model file was found.'
-        print(f"❌ {MODEL_LOAD_ERROR} Looked for: decafia_best.onnx, best.onnx")
+        print(f"❌ {MODEL_LOAD_ERROR} Looked for: decfia_best.onnx, decafia_best.onnx, best.onnx")
         return False
 
     try:
