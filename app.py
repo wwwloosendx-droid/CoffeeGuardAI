@@ -422,6 +422,8 @@ print("☕ CoffeeGuard AI - Disease Detection Model Loading...")
 print("=" * 60)
 
 MODEL_AVAILABLE = False
+MODEL_LOAD_ERROR = None
+MODEL_PATH = None
 model = None
 CLASS_MAP = {
     0: "leaf_rust",
@@ -549,19 +551,21 @@ DISEASE_SEVERITY = {
 }
 
 def load_model():
-    global model, MODEL_AVAILABLE, CLASS_MAP
+    global model, MODEL_AVAILABLE, CLASS_MAP, MODEL_LOAD_ERROR, MODEL_PATH
 
     candidate_paths = [
+        os.getenv('MODEL_PATH', ''),
         os.path.join(BASE_DIR, 'best.pt'),
         os.path.join(BASE_DIR, 'best.onnx'),
         os.path.join(BASE_DIR, 'decafia_best.onnx'),
         os.path.join(os.path.expanduser('~'), 'Downloads', 'decafia_best.onnx'),
     ]
 
-    model_path = next((path for path in candidate_paths if os.path.exists(path)), None)
+    model_path = next((path for path in candidate_paths if path and os.path.isfile(path)), None)
 
     if model_path is None:
-        print("❌ No model file found. Looked for: best.pt, best.onnx, decafia_best.onnx")
+        MODEL_LOAD_ERROR = 'No trained disease model file was found.'
+        print(f"❌ {MODEL_LOAD_ERROR} Looked for: best.pt, best.onnx, decafia_best.onnx")
         return False
 
     try:
@@ -578,6 +582,8 @@ def load_model():
             }
 
         MODEL_AVAILABLE = True
+        MODEL_PATH = model_path
+        MODEL_LOAD_ERROR = None
         print(f"✅ Model loaded successfully from: {model_path}")
         print(f"✅ Model classes: {CLASS_MAP}")
 
@@ -586,16 +592,19 @@ def load_model():
             model(dummy_img, conf=0.1, imgsz=INFERENCE_IMAGE_SIZE, verbose=False)
             print("✅ Model inference test passed!")
         except Exception as e:
-            print(f"⚠️ Model inference test failed: {e}")
+            MODEL_LOAD_ERROR = f'Model inference test failed: {e}'
+            print(f"⚠️ {MODEL_LOAD_ERROR}")
             MODEL_AVAILABLE = False
 
         return MODEL_AVAILABLE
 
     except ImportError as e:
-        print(f"❌ Error importing YOLO: {e}")
+        MODEL_LOAD_ERROR = f'Error importing YOLO: {e}'
+        print(f"❌ {MODEL_LOAD_ERROR}")
         return False
     except Exception as e:
-        print(f"❌ Error loading model: {e}")
+        MODEL_LOAD_ERROR = f'Error loading model: {e}'
+        print(f"❌ {MODEL_LOAD_ERROR}")
         import traceback
         traceback.print_exc()
         return False
@@ -608,7 +617,9 @@ load_model()
 def health():
     return jsonify({
         'status': 'ok',
-        'model_available': bool(MODEL_AVAILABLE)
+        'model_available': bool(MODEL_AVAILABLE),
+        'model_file': os.path.basename(MODEL_PATH) if MODEL_PATH else None,
+        'model_error': MODEL_LOAD_ERROR,
     }), 200
 
 
@@ -1841,6 +1852,16 @@ def predict():
             }), 400
         
         detection_result = detect_diseases(image)
+        # A missing/broken production model must never be presented to a farmer
+        # as a healthy-leaf result.  Returning 503 lets the dashboard show the
+        # real deployment problem instead of silently recording "No Disease".
+        if not detection_result.get('success'):
+            logging.error('Prediction unavailable: %s', detection_result.get('error'))
+            return jsonify({
+                'success': False,
+                'error': 'Disease model is unavailable. Please try again shortly.',
+                'model_available': False,
+            }), 503
         # Log detection internals to help debug zero-detection cases on deployed app
         try:
             short_debug = {
@@ -2109,6 +2130,15 @@ def validate_and_predict():
             }), 400
         
         detection_result = detect_diseases(image)
+        # Do not convert a server/model failure into a false "No Disease"
+        # result.  The client already displays non-2xx responses as errors.
+        if not detection_result.get('success'):
+            logging.error('Dashboard prediction unavailable: %s', detection_result.get('error'))
+            return jsonify({
+                'success': False,
+                'error': 'Disease model is unavailable. Please try again shortly.',
+                'model_available': False,
+            }), 503
         secondary_screening = detection_result.get('secondary_screening')
         
         if detection_result['success'] and detection_result['has_disease']:
