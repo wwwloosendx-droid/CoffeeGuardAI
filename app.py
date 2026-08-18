@@ -613,7 +613,11 @@ def health():
 
 
 # Admin debug UI: simple browser form to upload an image and view detection JSON.
+# Provide multiple route aliases to avoid 404s from differing URL styles.
 @app.route('/admin/debug_ui', methods=['GET', 'POST'])
+@app.route('/admin/debug', methods=['GET', 'POST'])
+@app.route('/debug', methods=['GET', 'POST'])
+@app.route('/admin/debug-ui', methods=['GET', 'POST'])
 def admin_debug_ui():
     if request.method == 'GET':
         return render_template('admin_debug.html', result=None)
