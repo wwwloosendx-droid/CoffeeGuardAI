@@ -602,6 +602,15 @@ def load_model():
 
 load_model()
 
+
+# Lightweight health endpoint for container platform healthchecks.
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({
+        'status': 'ok',
+        'model_available': bool(MODEL_AVAILABLE)
+    }), 200
+
 # This classifier is a secondary screen for full-leaf photographs when YOLO
 # finds no bounding boxes. Its classes differ from best.pt and it is not used
 # to fabricate YOLO detections or disease counts.
