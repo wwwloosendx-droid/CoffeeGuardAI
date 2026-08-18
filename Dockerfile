@@ -39,9 +39,9 @@ EXPOSE 5000
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 
-# Health check
+# Health check (uses Render-assigned PORT if provided)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/').read()"
+    CMD python -c "import os, urllib.request; port=os.environ.get('PORT','5000'); urllib.request.urlopen(f'http://localhost:{port}/').read()"
 
 # The Render container does not ship the trained model, so download it on first
 # startup if it is missing. This keeps the app deployable without committing a

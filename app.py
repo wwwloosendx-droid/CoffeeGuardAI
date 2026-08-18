@@ -1667,6 +1667,16 @@ def dashboard():
         print(f"Dashboard error: {e}")
         return render_template("dashboard.html", fullname=session.get("fullname", "Coffee Farmer"), session=session)
 
+
+# Explicit GET handler for the upload page with error logging to capture render failures.
+@app.route('/upload', methods=['GET'])
+def upload_page():
+    try:
+        return render_template('upload.html')
+    except Exception as e:
+        logging.exception("Error rendering upload page")
+        return "Internal server error", 500
+
 @app.route('/api/dashboard_stats')
 def dashboard_stats():
     if 'email' not in session:
