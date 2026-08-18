@@ -642,6 +642,48 @@ def admin_debug_ui():
     detection = detect_diseases(image)
     return render_template('admin_debug.html', result=detection)
 
+
+# Form-compatible debug POST (accepts token in form) for browsers that can't send headers
+@app.route('/admin/debug_detect_form', methods=['POST'])
+def admin_debug_detect_form():
+    form_token = request.form.get('token')
+    env_token = os.getenv('ADMIN_DEBUG_TOKEN')
+    if not env_token:
+        return jsonify({'error': 'ADMIN_DEBUG_TOKEN not configured on server'}), 403
+    if form_token != env_token:
+        return jsonify({'error': 'invalid token'}), 403
+
+    if 'image' not in request.files:
+        return jsonify({'error': 'no image uploaded'}), 400
+
+    file = request.files['image']
+    try:
+        image = Image.open(file.stream).convert('RGB')
+    except Exception as e:
+        return jsonify({'error': f'could not read image: {e}'}), 400
+
+    result = detect_diseases(image)
+    return jsonify(result)
+
+
+# Plain static debug page (no template) that posts to the form endpoint above
+@app.route('/debug_static', methods=['GET'])
+def debug_static():
+    html = '''
+    <!doctype html>
+    <html><head><meta charset="utf-8"><title>Debug Upload</title></head>
+    <body>
+    <h3>Debug Detect (browser)</h3>
+    <p>Enter admin token and upload an image.</p>
+    <form method="post" action="/admin/debug_detect_form" enctype="multipart/form-data">
+      <label>Token: <input type="text" name="token" style="width:360px" /></label><br/><br/>
+      <label>Image: <input type="file" name="image" accept="image/*"/></label><br/><br/>
+      <button type="submit">Upload & Detect</button>
+    </form>
+    </body></html>
+    '''
+    return html, 200, {'Content-Type': 'text/html'}
+
 # This classifier is a secondary screen for full-leaf photographs when YOLO
 # finds no bounding boxes. Its classes differ from best.pt and it is not used
 # to fabricate YOLO detections or disease counts.
