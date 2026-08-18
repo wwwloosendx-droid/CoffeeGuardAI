@@ -12,6 +12,7 @@ torchvision==0.18.1
 ultralytics==8.4.106
 # The deployed disease model is ONNX.  Ultralytics does not install this
 # runtime reliably as a transitive dependency in a minimal Docker image.
+onnx==1.16.2
 onnxruntime==1.20.1
 timm==1.0.28
 huggingface_hub==1.27.0
