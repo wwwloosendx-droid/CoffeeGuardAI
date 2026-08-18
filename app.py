@@ -611,6 +611,33 @@ def health():
         'model_available': bool(MODEL_AVAILABLE)
     }), 200
 
+
+# Admin debug UI: simple browser form to upload an image and view detection JSON.
+@app.route('/admin/debug_ui', methods=['GET', 'POST'])
+def admin_debug_ui():
+    if request.method == 'GET':
+        return render_template('admin_debug.html', result=None)
+
+    # POST: process uploaded image and show JSON
+    form_token = request.form.get('token')
+    env_token = os.getenv('ADMIN_DEBUG_TOKEN')
+    if not env_token:
+        return render_template('admin_debug.html', result={'error': 'ADMIN_DEBUG_TOKEN not configured on server'})
+    if form_token != env_token:
+        return render_template('admin_debug.html', result={'error': 'invalid token'})
+
+    if 'image' not in request.files:
+        return render_template('admin_debug.html', result={'error': 'no image uploaded'})
+
+    file = request.files['image']
+    try:
+        image = Image.open(file.stream).convert('RGB')
+    except Exception as e:
+        return render_template('admin_debug.html', result={'error': f'could not read image: {e}'})
+
+    detection = detect_diseases(image)
+    return render_template('admin_debug.html', result=detection)
+
 # This classifier is a secondary screen for full-leaf photographs when YOLO
 # finds no bounding boxes. Its classes differ from best.pt and it is not used
 # to fabricate YOLO detections or disease counts.

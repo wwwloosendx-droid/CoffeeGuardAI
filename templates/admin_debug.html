@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Admin Debug - CoffeeGuardAI</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 24px; }
+      label { display:block; margin-top:12px }
+      textarea { width:100%; height:360px; margin-top:12px }
+      .error { color: red }
+    </style>
+  </head>
+  <body>
+    <h2>Admin Debug - Upload Image</h2>
+    <p>Enter your admin token and upload an image to see raw detection JSON.</p>
+    <form method="post" enctype="multipart/form-data">
+      <label>Admin token (from Render env var ADMIN_DEBUG_TOKEN):</label>
+      <input type="text" name="token" style="width:400px" />
+      <label>Image file:</label>
+      <input type="file" name="image" accept="image/*" />
+      <div style="margin-top:12px">
+        <button type="submit">Upload & Detect</button>
+      </div>
+    </form>
+
+    {% if result is not none %}
+      <h3>Result</h3>
+      {% if result.error %}
+        <div class="error">Error: {{ result.error }}</div>
+      {% else %}
+        <textarea readonly>{{ result | tojson(indent=2) }}</textarea>
+      {% endif %}
+    {% endif %}
+  </body>
+</html>
