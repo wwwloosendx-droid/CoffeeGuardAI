@@ -2,7 +2,9 @@ services:
   - type: web
     name: coffee-guard-ai
     runtime: docker
-    healthCheckPath: /
+    # `/` redirects anonymous users to the login page. Render health checks
+    # require a direct successful response, which `/health` provides.
+    healthCheckPath: /health
     envVars:
       - key: SECRET_KEY
         generateValue: true

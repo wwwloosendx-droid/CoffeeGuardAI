@@ -2731,8 +2731,11 @@ def send_help():
 # =========================
 @app.route('/api/model_status')
 def model_status():
-    model_path = os.path.join(BASE_DIR, 'best.pt')
-    model_exists = os.path.exists(model_path)
+    # This application deploys the coffee-leaf disease ONNX model.  ``best.pt``
+    # is an old coffee-cherry model and must not be used to decide whether the
+    # production detector is available.
+    model_path = MODEL_PATH
+    model_exists = bool(model_path and os.path.exists(model_path))
     return jsonify({
         "model_available": MODEL_AVAILABLE,
         "model_exists": model_exists,
@@ -2743,7 +2746,7 @@ def model_status():
         "detection_conf": DETECTION_CONF,
         "inference_image_size": INFERENCE_IMAGE_SIZE,
         "reference_count": len(disease_reference.reference_colors),
-        "message": "✅ Disease detection model loaded successfully!" if MODEL_AVAILABLE else "❌ Model not loaded. Please check if best.pt exists."
+        "message": "✅ Disease detection model loaded successfully!" if MODEL_AVAILABLE else f"❌ Model not loaded. {MODEL_LOAD_ERROR or 'Check the configured ONNX model file.'}"
     })
 
 @app.route('/api/reference_status')
@@ -2839,14 +2842,14 @@ if __name__ == "__main__":
     print("🤖 AI STATUS:", "✅ AI MODEL LOADED!" if MODEL_AVAILABLE else "⚠️ AI model disabled")
     if MODEL_AVAILABLE:
         print("📊 Model classes:", CLASS_MAP)
-        print("📁 Model path:", os.path.join(BASE_DIR, 'best.pt'))
+        print("📁 Model path:", MODEL_PATH)
         print(f"🎯 Detection confidence threshold: {DETECTION_CONF}")
         print("🔄 Reference validation: Enabled")
         print("📝 Detection: Coffee Leaf Disease Detection")
         print("🦠 Diseases: Leaf Rust, Brown Eye Spot, No Disease, Leaf Miner")
     else:
-        print("💡 Please ensure best.pt is in the project directory")
-        print("📁 Expected path:", os.path.join(BASE_DIR, 'best.pt'))
+        print("💡 Please ensure decafia_best.onnx is in the project directory")
+        print("📁 Expected path:", os.path.join(BASE_DIR, 'decafia_best.onnx'))
     print("=" * 60)
     
     # Production settings - bind to all interfaces and use Render's port
