@@ -953,9 +953,7 @@ def detect_diseases(image, conf=DETECTION_CONF):
         }
     
     try:
-        # Do not apply the old contrast/colour/resize pipeline here.  best.pt
-        # performs its own letterboxing, and changing colour balance before
-        # inference was causing genuine detections to be lost.
+        # The ONNX detector performs its own RGB conversion and letterboxing.
         if isinstance(image, Image.Image):
             source_image = image.convert('RGB')
         elif isinstance(image, np.ndarray):
@@ -1033,46 +1031,33 @@ def detect_diseases(image, conf=DETECTION_CONF):
 
         all_detections = []
         for tile, x_offset, y_offset in inference_tiles:
-            results = model(
-                tile,
-                conf=conf,
-                iou=0.45,
-                imgsz=inference_image_size,
-                verbose=False,
-                augment=USE_AUGMENTATION,
-            )
-            if not results:
-                continue
-            result = results[0]
-            if result.boxes is not None:
-                for box in result.boxes:
-                    cls_id = int(box.cls)
-                    confidence = float(box.conf)
+            # ``model`` is OnnxDiseaseDetector in production.  Calling it as
+            # an Ultralytics YOLO object made every live analysis fail despite
+            # a successful model-load health check.
+            for detection in model.predict(tile, conf=conf, iou=0.45):
+                cls_id = detection['class_id']
+                confidence = detection['confidence']
+                raw_class_name = CLASS_MAP.get(cls_id, f"class_{cls_id}")
+                class_name = resolve_model_class_name(raw_class_name, cls_id)
 
-                    raw_class_name = CLASS_MAP.get(cls_id, f"class_{cls_id}")
-                    class_name = resolve_model_class_name(raw_class_name, cls_id)
+                if class_name == 'no_disease':
+                    continue
 
-                    if class_name == 'no_disease':
-                        continue
-
-                    x1, y1, x2, y2 = box.xyxy[0].tolist()
-                    
-                    # Ultralytics returns boxes in the original image's pixel
-                    # coordinates when it receives a PIL image.
-                    orig_x1 = max(0, min(orig_w, x1 + x_offset))
-                    orig_y1 = max(0, min(orig_h, y1 + y_offset))
-                    orig_x2 = max(0, min(orig_w, x2 + x_offset))
-                    orig_y2 = max(0, min(orig_h, y2 + y_offset))
-                    
-                    all_detections.append({
-                        'class_id': cls_id,
-                        'class_name': class_name,
-                        'confidence': confidence,
-                        'bbox': [orig_x1, orig_y1, orig_x2, orig_y2],
-                        'reference_validated': False,
-                        'display_name': DISEASE_LABELS.get(class_name, class_name),
-                        'emoji': DISEASE_EMOJIS.get(class_name, '🔴')
-                    })
+                x1, y1, x2, y2 = detection['bbox']
+                all_detections.append({
+                    'class_id': cls_id,
+                    'class_name': class_name,
+                    'confidence': confidence,
+                    'bbox': [
+                        max(0, min(orig_w, x1 + x_offset)),
+                        max(0, min(orig_h, y1 + y_offset)),
+                        max(0, min(orig_w, x2 + x_offset)),
+                        max(0, min(orig_h, y2 + y_offset)),
+                    ],
+                    'reference_validated': False,
+                    'display_name': DISEASE_LABELS.get(class_name, class_name),
+                    'emoji': DISEASE_EMOJIS.get(class_name, '🔴')
+                })
         
         # Remove overlapping duplicate detections from tiled inference.
         all_detections = _deduplicate_detections(all_detections, iou_threshold=0.45)
