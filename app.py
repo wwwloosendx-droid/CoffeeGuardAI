@@ -29,16 +29,16 @@ from email import encoders
 import requests
 import numpy as np
 import cv2
+import onnxruntime as ort
 from PIL import Image, ImageEnhance, ImageFilter
 from dotenv import load_dotenv
 
-import torch
-import torch.nn as nn
-from ultralytics import YOLO
 try:
+    import torch
     import timm
     TIMM_AVAILABLE = True
 except ImportError:
+    torch = None
     timm = None
     TIMM_AVAILABLE = False
 
@@ -551,6 +551,76 @@ DISEASE_SEVERITY = {
     'leaf_miner': 'moderate'
 }
 
+
+class OnnxDiseaseDetector:
+    """Small ONNX Runtime wrapper for the exported YOLOv8 disease model.
+
+    Keeping this adapter local avoids importing PyTorch and Ultralytics in the
+    web worker.  The bundled model has a fixed 640px input and returns the
+    standard YOLOv8 ``[x, y, w, h, class scores...]`` output.
+    """
+
+    def __init__(self, model_path):
+        self.session = ort.InferenceSession(
+            model_path,
+            providers=['CPUExecutionProvider'],
+        )
+        self.input_name = self.session.get_inputs()[0].name
+        input_shape = self.session.get_inputs()[0].shape
+        self.input_size = int(input_shape[2]) if isinstance(input_shape[2], int) else INFERENCE_IMAGE_SIZE
+        self.names = CLASS_MAP.copy()
+
+    @staticmethod
+    def _nms(detections, iou_threshold):
+        kept = []
+        for detection in sorted(detections, key=lambda item: item['confidence'], reverse=True):
+            x1, y1, x2, y2 = detection['bbox']
+            is_duplicate = False
+            for existing in kept:
+                ex1, ey1, ex2, ey2 = existing['bbox']
+                intersection = max(0, min(x2, ex2) - max(x1, ex1)) * max(0, min(y2, ey2) - max(y1, ey1))
+                union = (x2 - x1) * (y2 - y1) + (ex2 - ex1) * (ey2 - ey1) - intersection
+                if union and intersection / union >= iou_threshold:
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                kept.append(detection)
+        return kept
+
+    def predict(self, image, conf, iou):
+        source = np.asarray(image.convert('RGB'))
+        height, width = source.shape[:2]
+        scale = min(self.input_size / width, self.input_size / height)
+        resized_width, resized_height = round(width * scale), round(height * scale)
+        resized = cv2.resize(source, (resized_width, resized_height), interpolation=cv2.INTER_LINEAR)
+        pad_x = (self.input_size - resized_width) // 2
+        pad_y = (self.input_size - resized_height) // 2
+        canvas = np.full((self.input_size, self.input_size, 3), 114, dtype=np.uint8)
+        canvas[pad_y:pad_y + resized_height, pad_x:pad_x + resized_width] = resized
+        tensor = np.ascontiguousarray(canvas.transpose(2, 0, 1)[None], dtype=np.float32) / 255.0
+
+        output = self.session.run(None, {self.input_name: tensor})[0][0].T
+        class_scores = output[:, 4:]
+        class_ids = class_scores.argmax(axis=1)
+        confidences = class_scores[np.arange(len(output)), class_ids]
+        candidates = []
+        for prediction, class_id, confidence in zip(output, class_ids, confidences):
+            if float(confidence) < conf:
+                continue
+            center_x, center_y, box_width, box_height = prediction[:4]
+            x1 = max(0.0, min(float(width), (center_x - box_width / 2 - pad_x) / scale))
+            y1 = max(0.0, min(float(height), (center_y - box_height / 2 - pad_y) / scale))
+            x2 = max(0.0, min(float(width), (center_x + box_width / 2 - pad_x) / scale))
+            y2 = max(0.0, min(float(height), (center_y + box_height / 2 - pad_y) / scale))
+            if x2 > x1 and y2 > y1:
+                candidates.append({
+                    'class_id': int(class_id),
+                    'confidence': float(confidence),
+                    'bbox': [x1, y1, x2, y2],
+                })
+        return self._nms(candidates, iou)
+
+
 def load_model():
     global model, MODEL_AVAILABLE, CLASS_MAP, MODEL_LOAD_ERROR, MODEL_PATH
 
@@ -585,17 +655,7 @@ def load_model():
         return False
 
     try:
-        model = YOLO(model_path, task='detect')
-
-        raw_class_map = getattr(model, 'names', None)
-        if raw_class_map is None and hasattr(model, 'model') and hasattr(model.model, 'names'):
-            raw_class_map = model.model.names
-
-        if raw_class_map is not None:
-            CLASS_MAP = {
-                int(index): resolve_model_class_name(name, int(index))
-                for index, name in raw_class_map.items()
-            }
+        model = OnnxDiseaseDetector(model_path)
 
         MODEL_AVAILABLE = True
         MODEL_PATH = model_path
@@ -605,7 +665,7 @@ def load_model():
 
         try:
             dummy_img = np.zeros((640, 640, 3), dtype=np.uint8)
-            model(dummy_img, conf=0.1, imgsz=INFERENCE_IMAGE_SIZE, verbose=False)
+            model.predict(Image.fromarray(dummy_img), conf=0.1, iou=0.45)
             print("✅ Model inference test passed!")
         except Exception as e:
             MODEL_LOAD_ERROR = f'Model inference test failed: {e}'
@@ -615,7 +675,7 @@ def load_model():
         return MODEL_AVAILABLE
 
     except ImportError as e:
-        MODEL_LOAD_ERROR = f'Error importing YOLO: {e}'
+        MODEL_LOAD_ERROR = f'Error importing ONNX Runtime: {e}'
         print(f"❌ {MODEL_LOAD_ERROR}")
         return False
     except Exception as e:
